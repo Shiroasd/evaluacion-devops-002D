@@ -179,4 +179,4 @@ Aprendi a utilizar de mejor forma tanto las ramas como para recordar cosas tales
 ---
 
 ### Reflexión Individual - Integrante 2: [Alvaro Pérez]
-*(Espacio reservado para la redacción manuscrita / personal del estudiante 2. Describir aprendizajes, dificultades superadas y conclusiones técnicas personales).*
+Con esto aprendi cosas como lo que agiliza github en general y como se mejora con gitflow ya que te das cuenta a la hora de hacerlo que la colaboracion en la creacion de codigo es mejor y mucho mas eficiente
