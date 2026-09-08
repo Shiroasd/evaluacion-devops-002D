@@ -1,3 +1,4 @@
+/* Configuración general de la página */
 body {
   display: flex;
   flex-direction: column;
@@ -5,58 +6,100 @@ body {
   background-color: #eff9ff;
 }
 
-h1{
-    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+/* Estilo del título principal */
+h1 {
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
 }
 
+/* 
+  Configuración de la imagen principal.
+  Tanto el contenedor como la imagen tendrán una altura de 500px.
+*/
 #fotoPrincipalContainer,
 #fotoPrincipalContainer img {
   height: 500px;
 }
 
+/* 
+  Estilo del spinner de carga.
+  Se utiliza un borde gris con una parte azul
+  para crear el efecto de carga circular.
+*/
 #spinner {
-  border: 16px solid #f3f3f3; /* Light grey */
-  border-top: 16px solid #3498db; /* Blue */
-  border-radius: 50%;
+  border: 16px solid #f3f3f3; /* Borde gris claro */
+  border-top: 16px solid #3498db; /* Parte superior azul */
+  border-radius: 50%; /* Hace que el spinner sea circular */
   width: 120px;
   height: 120px;
   margin-top: 180px;
+
+  /* Aplica la animación de giro */
   animation: spin 2s linear infinite;
 }
 
+/* 
+  Animación del spinner.
+  Comienza en 0 grados y termina dando una vuelta completa
+  de 360 grados.
+*/
 @keyframes spin {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
 }
 
-#botonesContainer{
-    display: flex;
+/* 
+  Contenedor de los botones.
+  Los botones se colocan uno al lado del otro.
+*/
+#botonesContainer {
+  display: flex;
 }
 
+/* Estilo general de los botones */
 button {
-    font-size: xx-large;
-    background-color: unset;
-    padding: 1rem;
-    margin: 10px 20px;
-    transition: 100ms ease-in-out;
+  font-size: xx-large;
+  background-color: unset;
+  padding: 1rem;
+  margin: 10px 20px;
+
+  /* Hace que los cambios de tamaño sean suaves */
+  transition: 100ms ease-in-out;
 }
 
+/* 
+  Cuando el mouse pasa sobre un botón,
+  este aumenta ligeramente su tamaño.
+*/
 button:hover {
-    transform: scale(1.1);
+  transform: scale(1.1);
 }
 
+/* 
+  Cuando el mouse pasa sobre el botón "Me gusta",
+  aparece un fondo verde transparente.
+*/
 #like:hover {
-    background-color: #00ff2a23;
+  background-color: #00ff2a23;
 }
 
+/* 
+  Cuando el mouse pasa sobre el botón "No me gusta",
+  aparece un fondo rojo transparente.
+*/
 #dislike:hover {
-    background-color: #79000023;
+  background-color: #79000023;
 }
 
+/* 
+  Contenedor donde se muestran las imágenes de los perros.
+  Permite que las imágenes se acomoden automáticamente
+  en varias filas si no caben en una sola.
+*/
 .perrosContainer {
   position: relative;
   display: flex;
@@ -67,18 +110,35 @@ button:hover {
   margin: 10px 0;
 }
 
+/* 
+  Define una altura máxima para las imágenes
+  que aparecen dentro de los contenedores.
+*/
 .perrosContainer img {
   max-height: 100px;
 }
 
+/* 
+  Fondo verde para el contenedor
+  de los perros que recibieron "Me gusta".
+*/
 #perrosLikeContainer {
   background-color: #00ff2a23;
 }
 
+/* 
+  Fondo rojo para el contenedor
+  de los perros que recibieron "No me gusta".
+*/
 #perrosDislikeContainer {
   background-color: #ff000023;
 }
 
+/* 
+  Clase utilizada para ocultar elementos.
+  display: none hace que el elemento no sea visible
+  y tampoco ocupe espacio en la página.
+*/
 .escondido {
   display: none;
 }
