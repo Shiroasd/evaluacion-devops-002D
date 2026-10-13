@@ -8,6 +8,10 @@ perrosLikeContainer.classList.toggle("escondido");
 perrosDislikeContainer.classList.toggle("escondido");
 
 let perroActual;
+let votosLikes = 0;
+let votosDislikes = 0;
+const contadorLikesElement = document.getElementById("contadorLikes");
+const contadorDislikesElement = document.getElementById("contadorDislikes");
 
 document.getElementById("like").addEventListener("click", () => {
   rankearPerro("+");
@@ -25,11 +29,15 @@ function rankearPerro(ranking) {
   const nuevaImagen = document.createElement("img");
   nuevaImagen.src = perroActual;
   if (ranking === "+") {
+    votosLikes++;
+    if (contadorLikesElement) contadorLikesElement.textContent = votosLikes;
     perrosLikeContainer.appendChild(nuevaImagen);
-    perrosLikeContainer.classList.toggle("escondido",false)
+    perrosLikeContainer.classList.toggle("escondido", false);
   } else {
+    votosDislikes++;
+    if (contadorDislikesElement) contadorDislikesElement.textContent = votosDislikes;
     perrosDislikeContainer.appendChild(nuevaImagen);
-    perrosDislikeContainer.classList.toggle("escondido",false)
+    perrosDislikeContainer.classList.toggle("escondido", false);
   }
   nuevoPerro();
 }
