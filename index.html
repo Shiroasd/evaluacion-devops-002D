@@ -10,15 +10,17 @@
   </head>
   <body>
     <h1>¿Te gusta este perro?</h1>
-    <div id="fotoPrincipalContainer">
-        <div class="loader" id="spinner"></div>
-        <img src="" alt="Perrito lindo" id="perroActual" />
-    </div>
-    <div id="botonesContainer">
-      <button id="like">👍🏻</button>
-      <button id="saltear">Saltear</button>
-      <button id="dislike">👎🏻</button>
-    </div>
+    <main class="tarjeta-perro">
+      <div id="fotoPrincipalContainer">
+          <div class="loader" id="spinner"></div>
+          <img src="" alt="Perrito lindo" id="perroActual" />
+      </div>
+      <div id="botonesContainer">
+        <button id="like" class="btn btn-like" title="Me gusta">👍🏻</button>
+        <button id="saltear" class="btn btn-saltear" title="Saltear">Saltear ⏭️</button>
+        <button id="dislike" class="btn btn-dislike" title="No me gusta">👎🏻</button>
+      </div>
+    </main>
     <div class="perrosContainer" id="perrosLikeContainer"></div>
     <div class="perrosContainer" id="perrosDislikeContainer"></div>
   </body>

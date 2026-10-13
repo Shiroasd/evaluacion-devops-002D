@@ -9,9 +9,43 @@ h1{
     font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
 }
 
-#fotoPrincipalContainer,
+.tarjeta-perro {
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: 24px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.tarjeta-perro:hover {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+}
+
+#fotoPrincipalContainer {
+  height: 480px;
+  width: 480px;
+  max-width: 85vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 18px;
+  overflow: hidden;
+  background-color: #f7fafc;
+}
+
 #fotoPrincipalContainer img {
-  height: 500px;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  border-radius: 18px;
+  transition: transform 0.3s ease;
+}
+
+#fotoPrincipalContainer img:hover {
+  transform: scale(1.02);
 }
 
 #spinner {
@@ -37,24 +71,45 @@ h1{
     display: flex;
 }
 
-button {
-    font-size: xx-large;
-    background-color: unset;
-    padding: 1rem;
-    margin: 10px 20px;
-    transition: 100ms ease-in-out;
+.btn {
+  font-size: 1.4rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 0.75rem 1.4rem;
+  margin: 15px 10px;
+  cursor: pointer;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-button:hover {
-    transform: scale(1.1);
+.btn:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.1);
 }
 
-#like:hover {
-    background-color: #00ff2a23;
+.btn:active {
+  transform: translateY(0) scale(0.98);
 }
 
-#dislike:hover {
-    background-color: #79000023;
+.btn-like:hover {
+  background-color: #e6ffed;
+  border-color: #2ea043;
+}
+
+.btn-dislike:hover {
+  background-color: #ffeef0;
+  border-color: #da3633;
+}
+
+.btn-saltear {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.btn-saltear:hover {
+  background-color: #edf2f7;
 }
 
 .perrosContainer {
