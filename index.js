@@ -34,16 +34,35 @@ function rankearPerro(ranking) {
   nuevoPerro();
 }
 
+const mensajeErrorElement = document.getElementById("mensajeError");
+
 async function nuevoPerro() {
   perroActualElement.classList.toggle("escondido", true);
+  if (mensajeErrorElement) mensajeErrorElement.classList.add("escondido");
   spinner.classList.toggle("escondido", false);
-  const res = await fetch("https://dog.ceo/api/breeds/image/random");
-  const jsonRes = await res.json();
-  if (jsonRes.status === "success") {
-    perroActual = jsonRes.message;
-    perroActualElement.src = perroActual;
-  } else {
-    nuevoPerro();
+
+  try {
+    const res = await fetch("https://dog.ceo/api/breeds/image/random");
+    if (!res.ok) {
+      throw new Error(`Error HTTP: ${res.status}`);
+    }
+    const jsonRes = await res.json();
+    if (jsonRes.status === "success" && jsonRes.message) {
+      perroActual = jsonRes.message;
+      perroActualElement.src = perroActual;
+    } else {
+      throw new Error("Respuesta no exitosa de la API");
+    }
+  } catch (error) {
+    console.error("Fallo de red en API Dog.ceo:", error);
+    spinner.classList.toggle("escondido", true);
+    if (mensajeErrorElement) {
+      mensajeErrorElement.classList.remove("escondido");
+    } else {
+      perroActual = "https://images.dog.ceo/breeds/retriever-golden/n02099233_100.jpg";
+      perroActualElement.src = perroActual;
+      perroActualElement.classList.toggle("escondido", false);
+    }
   }
 }
 
