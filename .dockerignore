@@ -1,0 +1,40 @@
+# Version control
+.git
+.gitignore
+
+# CI/CD and automation
+.github
+
+# Dependencies and package managers
+node_modules
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing and code coverage
+tests
+test
+coverage
+*.lcov
+
+# Documentation
+*.md
+README.md
+
+# Logs and runtime artifacts
+*.log
+logs
+
+# IDE and OS metadata
+.vscode
+.idea
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker assets
+Dockerfile*
+docker-compose*.yml
+.dockerignore
