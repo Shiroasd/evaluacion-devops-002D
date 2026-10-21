@@ -10,7 +10,6 @@ desktop.ini
 
 # Dependencias (por si en algún feature se agrega tooling con npm)
 node_modules/
-package-lock.json
 
 # Archivos temporales
 *.log

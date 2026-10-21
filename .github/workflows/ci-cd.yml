@@ -1,0 +1,166 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Job 1: Calidad de Código, Verificación Estática y Pruebas Unitarias
+  # -------------------------------------------------------------------------
+  lint-and-test:
+    name: Linting, Verificación y Pruebas Unitarias
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Configurar entorno Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Verificar Integridad de Archivos del Proyecto
+        run: |
+          echo "Verificando estructura básica de archivos..."
+          test -f index.html || (echo "Error: index.html no existe" && exit 1)
+          test -f style.css || (echo "Error: style.css no existe" && exit 1)
+          test -f index.js || (echo "Error: index.js no existe" && exit 1)
+          echo "Todos los archivos esenciales están presentes."
+
+      - name: Validar Sintaxis de JavaScript (V8 Engine)
+        run: |
+          echo "Analizando sintaxis de index.js con Node.js..."
+          node --check index.js
+          echo "Sintaxis válida: no hay errores léxicos ni de sintaxis."
+
+      - name: Ejecutar Análisis Estático (ESLint)
+        run: |
+          echo "Ejecutando ESLint para verificar calidad de código en entorno Browser..."
+          ESLINT_USE_FLAT_CONFIG=false npx -y eslint@8.57.0 index.js --env browser,es2021 --rule '{"no-undef": "error"}'
+          echo "Análisis de ESLint completado sin errores críticos."
+
+      - name: Instalar Dependencias del Proyecto
+        run: |
+          echo "Instalando dependencias deterministas con npm ci..."
+          npm ci
+
+      - name: Ejecutar Pruebas Unitarias (Jest)
+        run: |
+          echo "Ejecutando suite de pruebas unitarias automatizadas con Jest..."
+          npm test
+
+  # -------------------------------------------------------------------------
+  # Job 2: Análisis de Seguridad y Vulnerabilidades (DevSecOps Gate)
+  # -------------------------------------------------------------------------
+  security-scan:
+    name: Análisis de Vulnerabilidades (Trivy)
+    runs-on: ubuntu-latest
+    needs: [lint-and-test]
+
+    steps:
+      - name: Clonar repositorio (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Escaneo de vulnerabilidades en código y dependencias (Trivy FS)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+
+  # -------------------------------------------------------------------------
+  # Job 3: Construcción y Etiquetado Trazable de Imagen Docker
+  # -------------------------------------------------------------------------
+  build-and-tag:
+    name: Construcción y Etiquetado Docker
+    runs-on: ubuntu-latest
+    needs: [security-scan]
+
+    steps:
+      - name: Clonar repositorio (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Determinar y sanitizar nombre de rama
+        run: |
+          RAW_BRANCH="${{ github.head_ref || github.ref_name }}"
+          SANITIZED_BRANCH=$(echo "$RAW_BRANCH" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          echo "BRANCH_TAG=${SANITIZED_BRANCH}" >> $GITHUB_ENV
+          echo "Rama detectada: ${RAW_BRANCH} -> Etiqueta Docker: ${SANITIZED_BRANCH}"
+
+      - name: Construir y etiquetar imagen Docker
+        run: |
+          echo "Construyendo imagen Docker y asignando etiquetas de trazabilidad..."
+          docker build \
+            --tag dog-rating-app:${{ github.sha }} \
+            --tag dog-rating-app:${{ env.BRANCH_TAG }} \
+            --file Dockerfile .
+          echo "Resumen de imágenes construidas:"
+          docker images dog-rating-app
+
+  # -------------------------------------------------------------------------
+  # Job 4: Despliegue Simulado y Validación de Salud
+  # -------------------------------------------------------------------------
+  deploy-simulated:
+    name: Despliegue Simulado y Verificación de Salud
+    runs-on: ubuntu-latest
+    needs: [build-and-tag]
+
+    steps:
+      - name: Clonar repositorio (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Desplegar contenedor con Docker Compose
+        run: |
+          echo "Iniciando servicio de contenedor en segundo plano..."
+          docker compose up -d --build
+
+      - name: Comprobar estado saludable del contenedor
+        run: |
+          echo "Esperando a que el contenedor alcance el estado saludable (healthy)..."
+          MAX_ATTEMPTS=20
+          ATTEMPT=1
+          STATUS="starting"
+
+          until [ $ATTEMPT -gt $MAX_ATTEMPTS ]; do
+            STATUS=$(docker inspect --format='{{json .State.Health.Status}}' dog-app-container 2>/dev/null | tr -d '"')
+            echo "Intento $ATTEMPT/$MAX_ATTEMPTS - Estado de salud: $STATUS"
+
+            if [ "$STATUS" = "healthy" ]; then
+              echo "Contenedor en estado saludable confirmado."
+              break
+            fi
+
+            sleep 3
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
+          # Validación estricta final de salud
+          FINAL_STATUS=$(docker inspect --format='{{json .State.Health.Status}}' dog-app-container | tr -d '"')
+          if [ "$FINAL_STATUS" != "healthy" ]; then
+            echo "Error crítico: El contenedor no alcanzó el estado 'healthy'. Estado obtenido: $FINAL_STATUS"
+            docker logs dog-app-container
+            exit 1
+          fi
+
+      - name: Validar disponibilidad del servicio HTTP (HTTP 200)
+        run: |
+          echo "Verificando disponibilidad HTTP 200 en http://localhost:8080/..."
+          curl -f http://localhost:8080/ || (echo "Error: El endpoint http://localhost:8080/ no respondió exitosamente" && exit 1)
+          echo "Verificación HTTP 200 completada exitosamente."
+
+      - name: Detener y limpiar contenedores
+        if: always()
+        run: |
+          echo "Desmantelando entorno de prueba simulado..."
+          docker compose down
