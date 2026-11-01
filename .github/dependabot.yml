@@ -1,37 +1,33 @@
 version: 2
 updates:
-  # ----------------------------------------------------
-  # 1. Dependencias del Ecosistema NPM
-  # ----------------------------------------------------
+  # Escaneo y actualización periódica para el ecosistema de dependencias Node.js / npm
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "08:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 10
-    labels:
-      - "security"
-      - "dependencies"
+      time: "04:00"
+      timezone: "America/Santiago"
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
+    labels:
+      - "dependencies"
+      - "security"
+    open-pull-requests-limit: 10
 
-  # ----------------------------------------------------
-  # 2. Acciones y Flujos de GitHub Actions
-  # ----------------------------------------------------
+  # Escaneo y actualización periódica para las acciones de GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "08:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 10
-    labels:
-      - "security"
-      - "dependencies"
+      time: "04:00"
+      timezone: "America/Santiago"
     commit-message:
-      prefix: "chore(ci)"
+      prefix: "ci(deps)"
       include: "scope"
+    labels:
+      - "dependencies"
+      - "security"
+    open-pull-requests-limit: 10

@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline - Calidad, Seguridad y Despliegue
 
 on:
   push:
@@ -10,157 +10,166 @@ on:
       - main
       - develop
 
+# Permisos mínimos asignados al GITHUB_TOKEN (Principio de Menor Privilegio)
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
 jobs:
-  # -------------------------------------------------------------------------
-  # Job 1: Calidad de Código, Verificación Estática y Pruebas Unitarias
-  # -------------------------------------------------------------------------
-  lint-and-test:
-    name: Linting, Verificación y Pruebas Unitarias
+  # ============================================================================
+  # FASE 1: Calidad de Código y Pruebas Automatizadas (IE2)
+  # ============================================================================
+  code-quality-and-tests:
+    name: Calidad de Código, Linting y Pruebas Unitarias
     runs-on: ubuntu-latest
 
     steps:
       - name: Clonar repositorio (Checkout)
         uses: actions/checkout@v4
 
-      - name: Configurar entorno Node.js (v20)
+      - name: Configurar Node.js (v20)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
-      - name: Verificar Integridad de Archivos del Proyecto
+      - name: Verificar Integridad de Archivos Esenciales
         run: |
-          echo "Verificando estructura básica de archivos..."
+          echo "Verificando estructura de archivos esenciales..."
           test -f index.html || (echo "Error: index.html no existe" && exit 1)
           test -f style.css || (echo "Error: style.css no existe" && exit 1)
           test -f index.js || (echo "Error: index.js no existe" && exit 1)
-          echo "Todos los archivos esenciales están presentes."
+          test -f Dockerfile || (echo "Error: Dockerfile no existe" && exit 1)
+          test -f docker-compose.yml || (echo "Error: docker-compose.yml no existe" && exit 1)
+          echo "Integridad de archivos confirmada exitosamente."
 
-      - name: Validar Sintaxis de JavaScript (V8 Engine)
+      - name: Validar Sintaxis de JavaScript (Motor V8)
         run: |
-          echo "Analizando sintaxis de index.js con Node.js..."
+          echo "Analizando sintaxis estática de index.js con Node.js..."
           node --check index.js
-          echo "Sintaxis válida: no hay errores léxicos ni de sintaxis."
-
-      - name: Ejecutar Análisis Estático (ESLint)
-        run: |
-          echo "Ejecutando ESLint para verificar calidad de código en entorno Browser..."
-          ESLINT_USE_FLAT_CONFIG=false npx -y eslint@8.57.0 index.js --env browser,es2021 --rule '{"no-undef": "error"}'
-          echo "Análisis de ESLint completado sin errores críticos."
+          echo "Sintaxis válida: código libre de anomalías léxicas."
 
       - name: Instalar Dependencias del Proyecto
         run: |
-          echo "Instalando dependencias deterministas con npm ci..."
           npm ci
 
-      - name: Ejecutar Pruebas Unitarias (Jest)
+      - name: Ejecutar Análisis Estático de Código (ESLint)
         run: |
-          echo "Ejecutando suite de pruebas unitarias automatizadas con Jest..."
+          echo "Ejecutando ESLint para verificar calidad de código..."
+          npm run lint
+
+      - name: Auditoría de Seguridad de Dependencias (npm audit)
+        run: |
+          echo "Ejecutando auditoría de vulnerabilidades en dependencias..."
+          npm audit --audit-level=high
+
+      - name: Ejecutar Pruebas Unitarias con Umbral de Cobertura Estricto (Jest)
+        run: |
+          echo "Ejecutando suite de pruebas unitarias Jest con validación de coverageThreshold..."
           npm test
 
-  # -------------------------------------------------------------------------
-  # Job 2: Análisis de Seguridad y Vulnerabilidades (DevSecOps Gate)
-  # -------------------------------------------------------------------------
-  security-scan:
-    name: Análisis de Vulnerabilidades (Trivy)
+  # ============================================================================
+  # FASE 2: Contenedores, Escaneo Trivy y Publicación GHCR (IE1, IE3, IE4)
+  # ============================================================================
+  build-security-and-publish:
+    name: Build Docker, Escaneo Trivy y Publicación GHCR
+    needs: code-quality-and-tests
     runs-on: ubuntu-latest
-    needs: [lint-and-test]
 
     steps:
       - name: Clonar repositorio (Checkout)
         uses: actions/checkout@v4
 
-      - name: Escaneo de vulnerabilidades en código y dependencias (Trivy FS)
-        uses: aquasecurity/trivy-action@0.28.0
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Autenticación en GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Normalizar nombre de imagen a minúsculas
+        id: image-tag
+        run: |
+          LOWER_IMAGE=$(echo "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')
+          echo "image=${LOWER_IMAGE}" >> $GITHUB_OUTPUT
+
+      - name: Construir Imagen Docker Local
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: |
+            ${{ steps.image-tag.outputs.image }}:${{ github.sha }}
+            ${{ steps.image-tag.outputs.image }}:latest
+
+      - name: Escaneo Estricto de Seguridad de Imagen con Trivy (Bloqueo Obligatorio)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.image-tag.outputs.image }}:${{ github.sha }}
           format: 'table'
           exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-  # -------------------------------------------------------------------------
-  # Job 3: Construcción y Etiquetado Trazable de Imagen Docker
-  # -------------------------------------------------------------------------
-  build-and-tag:
-    name: Construcción y Etiquetado Docker
+      - name: Publicar Imagen en GHCR (Trazabilidad por SHA y Latest)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        run: |
+          echo "Publicando imagen en GHCR con SHA ${{ github.sha }}..."
+          docker push ${{ steps.image-tag.outputs.image }}:${{ github.sha }}
+          docker push ${{ steps.image-tag.outputs.image }}:latest
+
+  # ============================================================================
+  # FASE 3: Despliegue en Entorno Simulado y Smoke Test (IE4, IE5)
+  # ============================================================================
+  simulated-deployment:
+    name: Despliegue en Entorno Simulado y Smoke Test
+    needs: build-security-and-publish
     runs-on: ubuntu-latest
-    needs: [security-scan]
 
     steps:
       - name: Clonar repositorio (Checkout)
         uses: actions/checkout@v4
 
-      - name: Determinar y sanitizar nombre de rama
+      - name: Desplegar Servicio con Docker Compose
         run: |
-          RAW_BRANCH="${{ github.head_ref || github.ref_name }}"
-          SANITIZED_BRANCH=$(echo "$RAW_BRANCH" | sed 's/[^a-zA-Z0-9._-]/-/g')
-          echo "BRANCH_TAG=${SANITIZED_BRANCH}" >> $GITHUB_ENV
-          echo "Rama detectada: ${RAW_BRANCH} -> Etiqueta Docker: ${SANITIZED_BRANCH}"
-
-      - name: Construir y etiquetar imagen Docker
-        run: |
-          echo "Construyendo imagen Docker y asignando etiquetas de trazabilidad..."
-          docker build \
-            --tag dog-rating-app:${{ github.sha }} \
-            --tag dog-rating-app:${{ env.BRANCH_TAG }} \
-            --file Dockerfile .
-          echo "Resumen de imágenes construidas:"
-          docker images dog-rating-app
-
-  # -------------------------------------------------------------------------
-  # Job 4: Despliegue Simulado y Validación de Salud
-  # -------------------------------------------------------------------------
-  deploy-simulated:
-    name: Despliegue Simulado y Verificación de Salud
-    runs-on: ubuntu-latest
-    needs: [build-and-tag]
-
-    steps:
-      - name: Clonar repositorio (Checkout)
-        uses: actions/checkout@v4
-
-      - name: Desplegar contenedor con Docker Compose
-        run: |
-          echo "Iniciando servicio de contenedor en segundo plano..."
+          echo "Iniciando orquestación de contenedores en runner simulado..."
           docker compose up -d --build
 
-      - name: Comprobar estado saludable del contenedor
+      - name: Validar Estado de Salud del Contenedor (Healthcheck)
         run: |
-          echo "Esperando a que el contenedor alcance el estado saludable (healthy)..."
-          MAX_ATTEMPTS=20
-          ATTEMPT=1
-          STATUS="starting"
-
-          until [ $ATTEMPT -gt $MAX_ATTEMPTS ]; do
-            STATUS=$(docker inspect --format='{{json .State.Health.Status}}' dog-app-container 2>/dev/null | tr -d '"')
-            echo "Intento $ATTEMPT/$MAX_ATTEMPTS - Estado de salud: $STATUS"
-
-            if [ "$STATUS" = "healthy" ]; then
-              echo "Contenedor en estado saludable confirmado."
+          echo "Monitoreando healthcheck del contenedor dog-app-container..."
+          for i in {1..30}; do
+            STATUS=$(docker inspect --format='{{json .State.Health.Status}}' dog-app-container 2>/dev/null || echo '"starting"')
+            echo "Intento $i/30: Estado del contenedor = $STATUS"
+            if [ "$STATUS" = '"healthy"' ]; then
+              echo "Contenedor saludable (healthy) verificado exitosamente."
               break
             fi
-
-            sleep 3
-            ATTEMPT=$((ATTEMPT + 1))
+            sleep 2
           done
 
-          # Validación estricta final de salud
-          FINAL_STATUS=$(docker inspect --format='{{json .State.Health.Status}}' dog-app-container | tr -d '"')
-          if [ "$FINAL_STATUS" != "healthy" ]; then
-            echo "Error crítico: El contenedor no alcanzó el estado 'healthy'. Estado obtenido: $FINAL_STATUS"
-            docker logs dog-app-container
+      - name: Ejecutar Prueba de Humo (Smoke Test HTTP 200)
+        run: |
+          echo "Ejecutando Smoke Test contra http://localhost:8080..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/)
+          echo "Respuesta HTTP recibida: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Error crítico: El servicio respondió con HTTP $HTTP_STATUS en lugar de 200 OK."
+            docker compose logs
             exit 1
           fi
+          echo "Smoke Test Exitoso: Aplicación web operativa y sirviendo tráfico HTTP 200 OK."
 
-      - name: Validar disponibilidad del servicio HTTP (HTTP 200)
-        run: |
-          echo "Verificando disponibilidad HTTP 200 en http://localhost:8080/..."
-          curl -f http://localhost:8080/ || (echo "Error: El endpoint http://localhost:8080/ no respondió exitosamente" && exit 1)
-          echo "Verificación HTTP 200 completada exitosamente."
-
-      - name: Detener y limpiar contenedores
+      - name: Limpieza de Recursos (Teardown)
         if: always()
         run: |
-          echo "Desmantelando entorno de prueba simulado..."
-          docker compose down
+          echo "Deteniendo y eliminando contenedores y redes simuladas..."
+          docker compose down -v

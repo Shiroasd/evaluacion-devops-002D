@@ -5,8 +5,8 @@ body {
   background-color: #eff9ff;
 }
 
-h1{
-    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+h1 {
+  font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
 }
 
 .tarjeta-perro {
@@ -49,8 +49,8 @@ h1{
 }
 
 #spinner {
-  border: 16px solid #f3f3f3; /* Light grey */
-  border-top: 16px solid #3498db; /* Blue */
+  border: 16px solid #f3f3f3;
+  border-top: 16px solid #3498db;
   border-radius: 50%;
   width: 120px;
   height: 120px;
@@ -67,8 +67,15 @@ h1{
   }
 }
 
-#botonesContainer{
-    display: flex;
+#mensajeError {
+  text-align: center;
+  padding: 1.5rem;
+  color: #b91c1c;
+  font-family: sans-serif;
+}
+
+#botonesContainer {
+  display: flex;
 }
 
 .btn {
@@ -112,6 +119,38 @@ h1{
   background-color: #edf2f7;
 }
 
+/* Insignias de Contadores */
+.panel-contador {
+  display: flex;
+  gap: 1rem;
+  margin: 1.2rem 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.contador-badge {
+  padding: 0.6rem 1.2rem;
+  border-radius: 9999px;
+  font-family: sans-serif;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.badge-like {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.badge-dislike {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
 .perrosContainer {
   position: relative;
   display: flex;
@@ -135,5 +174,5 @@ h1{
 }
 
 .escondido {
-  display: none;
+  display: none !important;
 }

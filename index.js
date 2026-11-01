@@ -1,11 +1,18 @@
 /* global module */
 
-// Variables de estado y elementos del DOM
+// Variables de estado
+let perroActual = "";
+let votosLikes = 0;
+let votosDislikes = 0;
+
+// Referencias del DOM (inicializadas solo si document existe)
 let perroActualElement = null;
 let spinner = null;
 let perrosLikeContainer = null;
 let perrosDislikeContainer = null;
-let perroActual = "";
+let mensajeErrorElement = null;
+let contadorLikesElement = null;
+let contadorDislikesElement = null;
 
 /**
  * Valida si una URL corresponde a un recurso de imagen válido (HTTP/HTTPS y extensiones soportadas).
@@ -73,8 +80,11 @@ function manejarErrorRed(error) {
  * @param {string} endpoint - URL de la API externa.
  * @returns {Promise<Object>} - Resultado con éxito o fallo controlado.
  */
-async function obtenerPerroAleatorio(fetchClient = fetch, endpoint = "https://dog.ceo/api/breeds/image/random") {
+async function obtenerPerroAleatorio(fetchClient = (typeof fetch !== "undefined" ? fetch : null), endpoint = "https://dog.ceo/api/breeds/image/random") {
   try {
+    if (!fetchClient) {
+      throw new Error("Cliente fetch no disponible");
+    }
     const respuesta = await fetchClient(endpoint);
     if (!respuesta.ok) {
       throw new Error(`HTTP error! status: ${respuesta.status}`);
@@ -94,7 +104,7 @@ async function obtenerPerroAleatorio(fetchClient = fetch, endpoint = "https://do
 }
 
 /**
- * Registra visualmente la preferencia del usuario y solicita la siguiente imagen.
+ * Registra la preferencia del usuario (like/dislike), actualiza contadores y DOM, y pide el siguiente perro.
  * @param {string} ranking - "+" para me gusta, "-" para no me gusta.
  */
 function rankearPerro(ranking) {
@@ -103,47 +113,63 @@ function rankearPerro(ranking) {
   const nuevaImagen = document.createElement("img");
   nuevaImagen.src = perroActual;
 
-  if (ranking === "+") {
+  if (ranking === "+" || ranking === "like") {
+    votosLikes = actualizarContador(votosLikes, 1);
+    if (contadorLikesElement) contadorLikesElement.textContent = String(votosLikes);
     if (perrosLikeContainer) {
       perrosLikeContainer.appendChild(nuevaImagen);
-      perrosLikeContainer.classList.toggle("escondido", false);
+      perrosLikeContainer.classList.remove("escondido");
     }
   } else {
+    votosDislikes = actualizarContador(votosDislikes, 1);
+    if (contadorDislikesElement) contadorDislikesElement.textContent = String(votosDislikes);
     if (perrosDislikeContainer) {
       perrosDislikeContainer.appendChild(nuevaImagen);
-      perrosDislikeContainer.classList.toggle("escondido", false);
+      perrosDislikeContainer.classList.remove("escondido");
     }
   }
   nuevoPerro();
 }
 
 /**
- * Controla el ciclo de vida de carga para solicitar una nueva imagen.
+ * Controla la carga y visualización de una nueva imagen de perro.
  */
 async function nuevoPerro() {
-  if (perroActualElement) perroActualElement.classList.toggle("escondido", true);
-  if (spinner) spinner.classList.toggle("escondido", false);
+  if (typeof document !== "undefined") {
+    if (perroActualElement) perroActualElement.classList.add("escondido");
+    if (mensajeErrorElement) mensajeErrorElement.classList.add("escondido");
+    if (spinner) spinner.classList.remove("escondido");
+  }
 
   const resultado = await obtenerPerroAleatorio();
   if (resultado.success) {
     perroActual = resultado.url;
-    if (perroActualElement) perroActualElement.src = perroActual;
+    if (perroActualElement) {
+      perroActualElement.src = perroActual;
+    }
   } else {
-    if (typeof document !== "undefined" && perroActualElement) {
-      nuevoPerro();
+    if (typeof document !== "undefined") {
+      if (spinner) spinner.classList.add("escondido");
+      if (mensajeErrorElement) {
+        mensajeErrorElement.classList.remove("escondido");
+      }
     }
   }
 }
 
-// Inicialización controlada del DOM en entorno de navegador
-if (typeof document !== "undefined") {
+/**
+ * Inicializa los manejadores de eventos del DOM en el navegador.
+ */
+function inicializarApp() {
+  if (typeof document === "undefined") return;
+
   perroActualElement = document.getElementById("perroActual");
   spinner = document.getElementById("spinner");
   perrosLikeContainer = document.getElementById("perrosLikeContainer");
   perrosDislikeContainer = document.getElementById("perrosDislikeContainer");
-
-  if (perrosLikeContainer) perrosLikeContainer.classList.toggle("escondido");
-  if (perrosDislikeContainer) perrosDislikeContainer.classList.toggle("escondido");
+  mensajeErrorElement = document.getElementById("mensajeError");
+  contadorLikesElement = document.getElementById("contadorLikes");
+  contadorDislikesElement = document.getElementById("contadorDislikes");
 
   const likeBtn = document.getElementById("like");
   const dislikeBtn = document.getElementById("dislike");
@@ -155,8 +181,8 @@ if (typeof document !== "undefined") {
 
   if (perroActualElement && spinner) {
     perroActualElement.addEventListener("load", () => {
-      spinner.classList.toggle("escondido", true);
-      perroActualElement.classList.toggle("escondido", false);
+      spinner.classList.add("escondido");
+      perroActualElement.classList.remove("escondido");
     });
   }
 
@@ -165,7 +191,16 @@ if (typeof document !== "undefined") {
   }
 }
 
-// Exportación condicional para Jest en entorno Node sin romper ejecución en navegador
+// Inicialización automática si se ejecuta en navegador
+if (typeof window !== "undefined" && typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", inicializarApp);
+  } else {
+    inicializarApp();
+  }
+}
+
+// Exportación modular para pruebas unitarias con Jest
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     validarUrlImagen,
@@ -174,6 +209,11 @@ if (typeof module !== "undefined" && module.exports) {
     manejarErrorRed,
     obtenerPerroAleatorio,
     rankearPerro,
-    nuevoPerro
+    nuevoPerro,
+    inicializarApp,
+    getPerroActual: () => perroActual,
+    setPerroActual: (url) => { perroActual = url; },
+    getVotosLikes: () => votosLikes,
+    getVotosDislikes: () => votosDislikes
   };
 }

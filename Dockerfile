@@ -1,29 +1,42 @@
-# Stage 1: Build and asset preparation
+# ==============================================================================
+# Stage 1: Build y verificación de integridad sintáctica
+# ==============================================================================
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy application static assets
+# Copia de recursos estáticos de la aplicación
 COPY index.html style.css index.js ./
 
-# Validate JavaScript syntax for runtime integrity
+# Verificación de sintaxis de JavaScript antes del empaquetado final
 RUN node --check index.js
 
-# Stage 2: Production web server
+# ==============================================================================
+# Stage 2: Servidor web ligero en producción (Nginx Alpine)
+# ==============================================================================
 FROM nginx:alpine
 
-# Remove default static content
+# Limpieza de archivos estáticos por defecto de Nginx
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copy verified static assets from builder stage
-COPY --from=builder /app/index.html /app/index.js /app/style.css /usr/share/nginx/html/
+# Configura Nginx para escuchar en puerto 8080 y ajusta rutas/permisos para usuario sin privilegios
+RUN sed -i 's/listen       80;/listen       8080;/g' /etc/nginx/conf.d/default.conf && \
+    sed -i 's|/var/run/nginx.pid|/tmp/nginx.pid|g' /etc/nginx/nginx.conf && \
+    touch /tmp/nginx.pid && \
+    chown -R nginx:nginx /tmp/nginx.pid /usr/share/nginx/html /var/cache/nginx /var/log/nginx /etc/nginx/conf.d
 
-# Expose HTTP port
-EXPOSE 80
+# Copia de activos estáticos validados desde el builder stage con propiedad de nginx
+COPY --from=builder --chown=nginx:nginx /app/index.html /app/index.js /app/style.css /usr/share/nginx/html/
 
-# Healthcheck to verify service availability
-HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-  CMD wget -q -O /dev/null http://localhost/ || exit 1
+# Cambio explícito al usuario no privilegiado (Principio de Menor Privilegio)
+USER nginx
 
-# Start Nginx in foreground
+# Exposición del puerto HTTP no privilegiado
+EXPOSE 8080
+
+# Healthcheck nativo para validar disponibilidad del servicio
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 --start-period=5s \
+  CMD wget -q -O /dev/null http://localhost:8080/ || exit 1
+
+# Ejecución de Nginx en primer plano
 CMD ["nginx", "-g", "daemon off;"]
