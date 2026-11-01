@@ -8,9 +8,13 @@ desktop.ini
 .idea/
 *.swp
 
-# Dependencias (por si en algún feature se agrega tooling con npm)
+# Dependencias
 node_modules/
-package-lock.json
 
-# Archivos temporales
+# Pruebas y cobertura
+coverage/
+*.lcov
+.nyc_output/
+
+# Archivos temporales y logs
 *.log
