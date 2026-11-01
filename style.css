@@ -1,3 +1,4 @@
+/* Configuración general de la página */
 body {
   display: flex;
   flex-direction: column;
@@ -48,6 +49,11 @@ h1 {
   transform: scale(1.02);
 }
 
+/* 
+  Estilo del spinner de carga.
+  Se utiliza un borde gris con una parte azul
+  para crear el efecto de carga circular.
+*/
 #spinner {
   border: 16px solid #f3f3f3;
   border-top: 16px solid #3498db;
@@ -55,13 +61,21 @@ h1 {
   width: 120px;
   height: 120px;
   margin-top: 180px;
+
+  /* Aplica la animación de giro */
   animation: spin 2s linear infinite;
 }
 
+/* 
+  Animación del spinner.
+  Comienza en 0 grados y termina dando una vuelta completa
+  de 360 grados.
+*/
 @keyframes spin {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -151,6 +165,11 @@ h1 {
   border: 1px solid #fecaca;
 }
 
+/* 
+  Contenedor donde se muestran las imágenes de los perros.
+  Permite que las imágenes se acomoden automáticamente
+  en varias filas si no caben en una sola.
+*/
 .perrosContainer {
   position: relative;
   display: flex;
@@ -161,18 +180,35 @@ h1 {
   margin: 10px 0;
 }
 
+/* 
+  Define una altura máxima para las imágenes
+  que aparecen dentro de los contenedores.
+*/
 .perrosContainer img {
   max-height: 100px;
 }
 
+/* 
+  Fondo verde para el contenedor
+  de los perros que recibieron "Me gusta".
+*/
 #perrosLikeContainer {
   background-color: #00ff2a23;
 }
 
+/* 
+  Fondo rojo para el contenedor
+  de los perros que recibieron "No me gusta".
+*/
 #perrosDislikeContainer {
   background-color: #ff000023;
 }
 
+/* 
+  Clase utilizada para ocultar elementos.
+  display: none hace que el elemento no sea visible
+  y tampoco ocupe espacio en la página.
+*/
 .escondido {
   display: none !important;
 }
