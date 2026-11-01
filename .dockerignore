@@ -1,32 +1,33 @@
-# Version control
+# Control de versiones
 .git
 .gitignore
 
-# CI/CD and automation
+# Entornos CI/CD y automatizaciones
 .github
 
-# Dependencies and package managers
+# Gestores de paquetes y dependencias locales
 node_modules
 package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Testing and code coverage
+# Pruebas y cobertura
 tests
 test
 coverage
 *.lcov
+.nyc_output
 
-# Documentation
+# Documentación
 *.md
 README.md
 
-# Logs and runtime artifacts
+# Logs y artefactos temporales
 *.log
 logs
 
-# IDE and OS metadata
+# Configuración IDE y sistema operativo
 .vscode
 .idea
 *.swp
@@ -34,7 +35,7 @@ logs
 Thumbs.db
 desktop.ini
 
-# Docker assets
+# Archivos de infraestructura Docker
 Dockerfile*
 docker-compose*.yml
 .dockerignore
