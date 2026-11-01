@@ -6,18 +6,47 @@ body {
   background-color: #eff9ff;
 }
 
-/* Estilo del título principal */
 h1 {
   font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
 }
 
-/* 
-  Configuración de la imagen principal.
-  Tanto el contenedor como la imagen tendrán una altura de 500px.
-*/
-#fotoPrincipalContainer,
+.tarjeta-perro {
+  background: #ffffff;
+  padding: 1.5rem;
+  border-radius: 24px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.tarjeta-perro:hover {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+}
+
+#fotoPrincipalContainer {
+  height: 480px;
+  width: 480px;
+  max-width: 85vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 18px;
+  overflow: hidden;
+  background-color: #f7fafc;
+}
+
 #fotoPrincipalContainer img {
-  height: 500px;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  border-radius: 18px;
+  transition: transform 0.3s ease;
+}
+
+#fotoPrincipalContainer img:hover {
+  transform: scale(1.02);
 }
 
 /* 
@@ -26,9 +55,9 @@ h1 {
   para crear el efecto de carga circular.
 */
 #spinner {
-  border: 16px solid #f3f3f3; /* Borde gris claro */
-  border-top: 16px solid #3498db; /* Parte superior azul */
-  border-radius: 50%; /* Hace que el spinner sea circular */
+  border: 16px solid #f3f3f3;
+  border-top: 16px solid #3498db;
+  border-radius: 50%;
   width: 120px;
   height: 120px;
   margin-top: 180px;
@@ -52,47 +81,88 @@ h1 {
   }
 }
 
-/* 
-  Contenedor de los botones.
-  Los botones se colocan uno al lado del otro.
-*/
+#mensajeError {
+  text-align: center;
+  padding: 1.5rem;
+  color: #b91c1c;
+  font-family: sans-serif;
+}
+
 #botonesContainer {
   display: flex;
 }
 
-/* Estilo general de los botones */
-button {
-  font-size: xx-large;
-  background-color: unset;
-  padding: 1rem;
-  margin: 10px 20px;
-
-  /* Hace que los cambios de tamaño sean suaves */
-  transition: 100ms ease-in-out;
+.btn {
+  font-size: 1.4rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  padding: 0.75rem 1.4rem;
+  margin: 15px 10px;
+  cursor: pointer;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 
-  Cuando el mouse pasa sobre un botón,
-  este aumenta ligeramente su tamaño.
-*/
-button:hover {
-  transform: scale(1.1);
+.btn:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.1);
 }
 
-/* 
-  Cuando el mouse pasa sobre el botón "Me gusta",
-  aparece un fondo verde transparente.
-*/
-#like:hover {
-  background-color: #00ff2a23;
+.btn:active {
+  transform: translateY(0) scale(0.98);
 }
 
-/* 
-  Cuando el mouse pasa sobre el botón "No me gusta",
-  aparece un fondo rojo transparente.
-*/
-#dislike:hover {
-  background-color: #79000023;
+.btn-like:hover {
+  background-color: #e6ffed;
+  border-color: #2ea043;
+}
+
+.btn-dislike:hover {
+  background-color: #ffeef0;
+  border-color: #da3633;
+}
+
+.btn-saltear {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.btn-saltear:hover {
+  background-color: #edf2f7;
+}
+
+/* Insignias de Contadores */
+.panel-contador {
+  display: flex;
+  gap: 1rem;
+  margin: 1.2rem 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.contador-badge {
+  padding: 0.6rem 1.2rem;
+  border-radius: 9999px;
+  font-family: sans-serif;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.badge-like {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.badge-dislike {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
 }
 
 /* 
@@ -140,5 +210,5 @@ button:hover {
   y tampoco ocupe espacio en la página.
 */
 .escondido {
-  display: none;
+  display: none !important;
 }

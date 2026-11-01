@@ -1,0 +1,33 @@
+version: 2
+updates:
+  # Escaneo y actualización periódica para el ecosistema de dependencias Node.js / npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "America/Santiago"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "security"
+    open-pull-requests-limit: 10
+
+  # Escaneo y actualización periódica para las acciones de GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "America/Santiago"
+    commit-message:
+      prefix: "ci(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "security"
+    open-pull-requests-limit: 10

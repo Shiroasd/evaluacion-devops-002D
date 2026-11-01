@@ -1,0 +1,30 @@
+services:
+  web-service:
+    container_name: dog-app-container
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dog-rating-app:latest
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
+        reservations:
+          cpus: "0.10"
+          memory: 64M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,182 @@
+name: CI/CD Pipeline - Calidad, Seguridad y Despliegue
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+# Permisos mínimos asignados al GITHUB_TOKEN (Principio de Menor Privilegio)
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  # ============================================================================
+  # FASE 1: Calidad de Código y Pruebas Automatizadas (IE2)
+  # ============================================================================
+  code-quality-and-tests:
+    name: Calidad de Código, Linting y Pruebas Unitarias
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verificar Integridad de Archivos Esenciales
+        run: |
+          echo "Verificando estructura de archivos esenciales..."
+          test -f index.html || (echo "Error: index.html no existe" && exit 1)
+          test -f style.css || (echo "Error: style.css no existe" && exit 1)
+          test -f index.js || (echo "Error: index.js no existe" && exit 1)
+          test -f Dockerfile || (echo "Error: Dockerfile no existe" && exit 1)
+          test -f docker-compose.yml || (echo "Error: docker-compose.yml no existe" && exit 1)
+          echo "Integridad de archivos confirmada exitosamente."
+
+      - name: Validar Sintaxis de JavaScript (Motor V8)
+        run: |
+          echo "Analizando sintaxis estática de index.js con Node.js..."
+          node --check index.js
+          echo "Sintaxis válida: código libre de anomalías léxicas."
+
+      - name: Instalar Dependencias del Proyecto
+        run: |
+          npm ci
+
+      - name: Ejecutar Análisis Estático de Código (ESLint)
+        run: |
+          echo "Ejecutando ESLint para verificar calidad de código..."
+          npm run lint
+
+      - name: Auditoría de Seguridad de Dependencias (npm audit)
+        run: |
+          echo "Ejecutando auditoría de vulnerabilidades en dependencias..."
+          npm audit --audit-level=high
+
+      - name: Ejecutar Pruebas Unitarias con Umbral de Cobertura Estricto (Jest)
+        run: |
+          echo "Ejecutando suite de pruebas unitarias Jest con validación de coverageThreshold..."
+          npm test
+
+  # ============================================================================
+  # FASE 2: Contenedores, Escaneo Trivy y Publicación GHCR (IE1, IE3, IE4)
+  # ============================================================================
+  build-security-and-publish:
+    name: Build Docker, Escaneo Trivy y Publicación GHCR
+    needs: code-quality-and-tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Clonar repositorio (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Normalizar nombre de imagen a minúsculas
+        id: image-tag
+        run: |
+          # Convierte el repositorio (ej. Shiroasd/evaluacion-devops-002D) a minúsculas para cumplir con estándares Docker/GHCR
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE="ghcr.io/${REPO_LOWER}"
+          echo "image=${IMAGE}" >> $GITHUB_OUTPUT
+          echo "IMAGE_NAME=${IMAGE}" >> $GITHUB_ENV
+          echo "Imagen normalizada: ${IMAGE}"
+
+      - name: Autenticación en GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construir Imagen Docker Local
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          load: true
+          tags: |
+            ${{ steps.image-tag.outputs.image }}:${{ github.sha }}
+            ${{ steps.image-tag.outputs.image }}:latest
+
+      - name: Escaneo Estricto de Seguridad de Imagen con Trivy (Bloqueo Obligatorio)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.image-tag.outputs.image }}:${{ github.sha }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Publicar Imagen en GHCR (Trazabilidad por SHA y Latest)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        run: |
+          echo "Publicando imagen en GHCR con SHA ${{ github.sha }}..."
+          docker push ${{ steps.image-tag.outputs.image }}:${{ github.sha }}
+          docker push ${{ steps.image-tag.outputs.image }}:latest
+
+  # ============================================================================
+  # FASE 3: Despliegue en Entorno Simulado y Smoke Test (IE4, IE5)
+  # ============================================================================
+  simulated-deployment:
+    name: Despliegue en Entorno Simulado y Smoke Test
+    needs: build-security-and-publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Desplegar Servicio con Docker Compose
+        run: |
+          echo "Iniciando orquestación de contenedores en runner simulado..."
+          docker compose up -d --build
+
+      - name: Validar Estado de Salud del Contenedor (Healthcheck)
+        run: |
+          echo "Monitoreando healthcheck del contenedor dog-app-container..."
+          for i in {1..30}; do
+            STATUS=$(docker inspect --format='{{json .State.Health.Status}}' dog-app-container 2>/dev/null || echo '"starting"')
+            echo "Intento $i/30: Estado del contenedor = $STATUS"
+            if [ "$STATUS" = '"healthy"' ]; then
+              echo "Contenedor saludable (healthy) verificado exitosamente."
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Ejecutar Prueba de Humo (Smoke Test HTTP 200)
+        run: |
+          echo "Ejecutando Smoke Test contra http://localhost:8080..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/)
+          echo "Respuesta HTTP recibida: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Error crítico: El servicio respondió con HTTP $HTTP_STATUS en lugar de 200 OK."
+            docker compose logs
+            exit 1
+          fi
+          echo "Smoke Test Exitoso: Aplicación web operativa y sirviendo tráfico HTTP 200 OK."
+
+      - name: Limpieza de Recursos (Teardown)
+        if: always()
+        run: |
+          echo "Deteniendo y eliminando contenedores y redes simuladas..."
+          docker compose down -v
