@@ -10,7 +10,7 @@
     "lint": "npx -y eslint@8.57.0 index.js tests/app.test.js --env browser,node,jest,es2021 --rule \"{\\\"no-undef\\\": \\\"error\\\"}\""
   },
   "devDependencies": {
-    "jest": "^29.7.0",
+    "jest": "^30.5.2",
     "jest-environment-jsdom": "^29.7.0"
   },
   "jest": {
