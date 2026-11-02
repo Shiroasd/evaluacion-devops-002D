@@ -98,6 +98,11 @@ describe("Suite de Pruebas Unitarias - Aplicación Web Lista de Perros", () => {
       expect(actualizarContador(-5, 1)).toBe(1);
     });
 
+    test("actualizarContador: utiliza parámetros por defecto si no se especifican", () => {
+      expect(actualizarContador()).toBe(1);
+      expect(actualizarContador(10)).toBe(11);
+    });
+
     test("registrarInteraccion: actualiza el estado inmutablemente para likes y dislikes", () => {
       const estadoInicial = { likes: 0, dislikes: 0 };
 
@@ -113,6 +118,13 @@ describe("Suite de Pruebas Unitarias - Aplicación Web Lista de Perros", () => {
       const estadoConAlias = registrarInteraccion(estadoConDislike, "like");
       expect(estadoConAlias.likes).toBe(2);
       expect(estadoConAlias.dislikes).toBe(1);
+
+      const estadoConAliasDislike = registrarInteraccion(estadoConAlias, "dislike");
+      expect(estadoConAliasDislike.likes).toBe(2);
+      expect(estadoConAliasDislike.dislikes).toBe(2);
+
+      const estadoSinCambio = registrarInteraccion(estadoConAliasDislike, "neutro");
+      expect(estadoSinCambio).toEqual(estadoConAliasDislike);
 
       const estadoDesdeNull = registrarInteraccion(null, "dislike");
       expect(estadoDesdeNull.likes).toBe(0);
@@ -268,6 +280,20 @@ describe("Suite de Pruebas Unitarias - Aplicación Web Lista de Perros", () => {
       likeBtn.click();
       dislikeBtn.click();
       saltearBtn.click();
+    });
+
+    test("rankearPerro: funciona correctamente con alias 'like' y 'dislike'", () => {
+      setPerroActual("https://images.dog.ceo/breeds/beagle/dog.jpg");
+      rankearPerro("like");
+      expect(getPerroActual()).toBe("https://images.dog.ceo/breeds/beagle/dog.jpg");
+
+      rankearPerro("dislike");
+      expect(document.getElementById("perrosDislikeContainer").children.length).toBeGreaterThan(0);
+    });
+
+    test("inicializarApp: se comporta de forma segura si los elementos del DOM no existen", () => {
+      document.body.innerHTML = "";
+      expect(() => inicializarApp()).not.toThrow();
     });
   });
 });
