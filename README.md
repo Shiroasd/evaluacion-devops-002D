@@ -1,310 +1,354 @@
 # Lista de perros 🐶 - DevOps Engineering Platform
 
-Aplicación web interactiva que consume la API de [dog.ceo](https://dog.ceo/dog-api/) para clasificar imágenes de perros ("me gusta" / "no me gusta"), implementada con estándares de Ingeniería DevOps: control de versiones con **GitFlow**, **Conventional Commits**, pruebas automatizadas con **Jest (cobertura estricta)**, análisis estático con **ESLint**, contenedorización segura multi-stage (**Nginx Alpine non-root**), orquestación con límites de recursos (**Docker Compose**), escaneo estricto de vulnerabilidades (**Trivy**), gestión de dependencias (**Dependabot**) y entrega continua con trazabilidad inmutable (**GHCR + Commit SHA**) con despliegue simulado y **smoke test (HTTP 200)**.
+**Asignatura:** Ingeniería DevOps (DOY0101)  
+**Evaluación:** Evaluación Parcial 2 (Auditoría, Corrección y Validación Continua)  
+**Repositorio Oficial:** [https://github.com/Shiroasd/evaluacion-devops-002D](https://github.com/Shiroasd/evaluacion-devops-002D)  
+**Rama Principal:** `main` (Producción) | **Rama de Integración:** `develop` (Staging)
 
 ---
 
-## 🚀 Cómo levantar el proyecto localmente
+## 📋 Descripción del Proyecto y Objetivo de la Evaluación
 
-### Opción 1: Mediante Contenedores con Docker Compose (Recomendada)
-Para ejecutar la aplicación exactamente bajo las mismas condiciones del entorno de producción y simulación:
+**Lista de perros** es una aplicación web interactiva que consume la API REST pública de [dog.ceo](https://dog.ceo/dog-api/) para clasificar imágenes caninas en preferencias de usuario (*"Me gusta"* / *"No me gusta"* / *"Saltear"*), manteniendo un registro reactivo de contadores y galerías dinámicas en el DOM.
+
+### Objetivo de la Evaluación DevOps
+El objetivo de este proyecto es transformar una aplicación web estática inicial en una plataforma con estándares profesionales de Ingeniería DevOps, resolviendo las observaciones de la retroalimentación docente mediante el cumplimiento estricto y comprobable de los cinco indicadores de evaluación:
+1. **IE1. Uso de Contenedores:** Empaquetado en contenedor Docker multi-stage ultraligero (~25 MB), ejecutado bajo usuario sin privilegios (`non-root`, UID 101), con directiva `HEALTHCHECK` funcional y parches de seguridad aplicados.
+2. **IE2. Pruebas Automatizadas en Pipelines CI:** Suite de pruebas unitarias con **Jest** y entorno **JSDOM** que cubren la lógica de negocio y manipulación de interfaz, aplicando un umbral estricto de cobertura (`coverageThreshold` >= 75%) que bloquea el pipeline ante cualquier degradación.
+3. **IE3. Parámetros de Escalabilidad y Seguridad:** Gobernanza de seguridad *Shift-Left*: principio de menor privilegio en tokens de GitHub Actions, escaneo continuo con **Dependabot** (npm, github-actions, docker), auditoría estricta de dependencias con `npm audit`, escaneo de vulnerabilidades en imágenes con **Trivy** (bloqueante en HIGH/CRITICAL) y delimitación de recursos de CPU y RAM.
+4. **IE4. Despliegue Automático y Trazabilidad:** Integración continua que genera artefactos inmutables en **GitHub Container Registry (GHCR)** con trazabilidad criptográfica por commit SHA completo, despliegue simulado en runner efímero y prueba de humo (*Smoke Test*) con validación de código HTTP 200 y comprobación de contenido HTML legítimo.
+5. **IE5. Orquestación de Contenedores:** Orquestación reproducible mediante **Docker Compose**, configuración de servicios, red bridge aislada, política de reinicio `unless-stopped`, healthcheck sincronizado y límites duros de memoria y cómputo.
+
+---
+
+## 🛠️ Tecnologías Utilizadas
+
+- **Frontend Core:** HTML5 semántico, CSS3 Vanilla (variables CSS, flexbox, glassmorphism y micro-animaciones), JavaScript Vanilla (ES6+ modular).
+- **Entorno de Ejecución:** Node.js v20 LTS / v24.
+- **Testing & Calidad:** Jest v29, `jest-environment-jsdom`, ESLint v8.57.0 (análisis estático léxico y sintáctico).
+- **Contenedorización:** Docker v29+, Multi-stage build (`node:20-alpine` builder + `nginxinc/nginx-unprivileged:alpine` runtime).
+- **Orquestación:** Docker Compose v2.x / v5.x.
+- **Seguridad & Análisis:** Aqua Security Trivy, npm audit, GitHub Dependabot, OCI Metadata Labels.
+- **CI/CD & Registro:** GitHub Actions, GitHub Container Registry (`ghcr.io`).
+
+---
+
+## 🏛️ Arquitectura General del Sistema
+
+```mermaid
+flowchart LR
+    subgraph Cliente ["Navegador Web / Host"]
+        UI["Interfaz Web (HTML5/CSS3/JS)"]
+        API["Dog CEO REST API"]
+        UI <-->|Fetch aleatorio| API
+    end
+
+    subgraph DockerHost ["Docker Engine & Compose"]
+        subgraph Network ["Red Aislada: app-network (bridge)"]
+            Container["Contenedor: dog-app-container\n(nginx-unprivileged:alpine)"]
+            Port["Puerto Expuesto: 8080:8080"]
+            Resources["Límites: CPU 0.50 | RAM 128MB"]
+            Health["Healthcheck: 127.0.0.1:8080/"]
+        end
+    end
+
+    UI -->|Petición HTTP 200| Port
+    Port --> Container
+    Container --- Resources
+    Container --- Health
+```
+
+---
+
+## 📁 Estructura del Repositorio
+
+```text
+evaluacion-devops-002D/
+├── .github/
+│   ├── dependabot.yml          # Configuración de Dependabot (npm, github-actions, docker)
+│   └── workflows/
+│       └── ci-cd.yml           # Pipeline CI/CD (Calidad, Trivy, GHCR, Despliegue, Smoke Test)
+├── tests/
+│   └── app.test.js             # Suite de 20 pruebas unitarias Jest con JSDOM
+├── .dockerignore               # Exclusión estricta de archivos temporales y secretos del build
+├── .gitignore                  # Exclusión para control de versiones Git
+├── Dockerfile                  # Multi-stage build con Nginx Alpine non-root, OCI labels y healthcheck
+├── docker-compose.yml          # Orquestación con red bridge, límites de CPU/RAM y healthcheck
+├── index.html                  # Marcado semántico, panel de contadores y contenedor de errores
+├── index.js                    # Lógica modular: llamadas API, contadores inmutables, eventos DOM
+├── package.json                # Metadatos del proyecto, scripts (test, test:coverage, lint) y coverageThreshold
+├── package-lock.json           # Fijación determinista de árbol de dependencias
+├── style.css                   # Sistema visual, diseño responsivo, loaders y badges
+└── README.md                   # Documentación técnica integral de DevOps y evidencia
+```
+
+---
+
+## 🚀 Guía de Instalación y Ejecución
+
+### Requisitos Previos
+- **Docker Desktop** (v24 o superior) con Docker Compose habilitado.
+- **Node.js** (v20 LTS o superior) y **npm** (v10 o superior) para desarrollo local de pruebas.
+- Cliente de línea de comandos (`curl` o navegador moderno).
+
+---
+
+### Opción 1: Ejecución con Docker Compose (Recomendada para Producción/Evaluación)
+
+Esta opción recrea el entorno idéntico al runner de despliegue:
 
 ```bash
-# Construir la imagen y levantar el contenedor en segundo plano
+# 1. Validar la sintaxis del archivo de orquestación
+docker compose config
+
+# 2. Construir la imagen y levantar el servicio en segundo plano
 docker compose up -d --build
 
-# Verificar el estado de salud del contenedor (Healthcheck)
+# 3. Monitorear el estado de salud del contenedor (debe alcanzar estado healthy)
 docker compose ps
 
-# Comprobar la respuesta HTTP del servicio (Smoke Test local)
-curl -I http://localhost:8080/
+# 4. Inspeccionar los registros del servicio Nginx
+docker compose logs
 
-# Ver logs en tiempo real
-docker compose logs -f
+# 5. Realizar una petición de comprobación (Smoke Test local)
+curl.exe -i http://localhost:8080/
 
-# Detener el servicio y limpiar redes
+# 6. Detener el servicio y eliminar contenedores y redes asociadas
 docker compose down
 ```
 
-La aplicación estará disponible inmediatamente en `http://localhost:8080/`.
+La aplicación se encontrará disponible en: `http://localhost:8080/`.
 
-### Opción 2: Desarrollo y Ejecución Local de Pruebas
+---
+
+### Opción 2: Desarrollo Local y Suite de Calidad de Código
+
+Para ejecutar la verificación estática y suite de pruebas en el entorno de desarrollo:
+
 ```bash
-# Instalar dependencias del proyecto
-npm install
+# 1. Instalar dependencias fijadas de manera reproducible
+npm ci
 
-# Validar sintaxis nativa de JavaScript
+# 2. Validar sintaxis nativa de JavaScript con el motor V8
 node --check index.js
 
-# Ejecutar linter estático (ESLint)
+# 3. Ejecutar análisis estático con ESLint
 npm run lint
 
-# Ejecutar suite de pruebas unitarias y verificar umbral de cobertura (Jest)
+# 4. Ejecutar auditoría de seguridad de dependencias
+npm audit --audit-level=high
+
+# 5. Ejecutar la suite completa de pruebas unitarias
 npm test
+
+# 6. Ejecutar pruebas con reporte detallado y validación de cobertura mínima
+npm run test:coverage
 ```
 
 ---
 
-## 🌳 Estrategia de ramificación (GitFlow)
+## 🧪 Pruebas Automatizadas y Métricas de Cobertura (IE2)
 
-Para este proyecto se implementó la estrategia de ramificación **GitFlow**, asegurando estabilidad en producción y desacoplamiento en las etapas de desarrollo e integración.
+La suite de pruebas en [tests/app.test.js](./tests/app.test.js) implementa **20 casos de prueba independientes** utilizando Jest y JSDOM para aislar completamente las dependencias externas (API Dog CEO) mediante *mocks* y simular la interacción del navegador.
 
-### Justificación Técnica
-1. **Separación Estricta de Entornos:**
-   - `main`: Rama de **Producción**. Solo recibe código completamente probado, escaneado y validado mediante Pull Request.
-   - `develop`: Rama base de **Integración Continua (Staging)**. Agrupa el trabajo consolidado de las ramas de características (`feature/*`) antes de un release.
-2. **Colaboración Segura entre Desarrolladores:**
-   - Cada funcionalidad se desarrolla de forma aislada en ramas dedicadas (`feature/*`) que nacen desde `develop` y se reintegran a `develop` mediante Pull Request con revisión de pares obligatoria.
-3. **Gestión Ágil de Incidentes Críticos (`hotfix/*`):**
-   - Ante fallos de severidad alta detectados en producción, se generan ramas de parche urgente (`hotfix/*`) que nacen de `main` y, tras resolverse, se fusionan simultáneamente a `main` y a `develop`.
+### Distribución de Módulos de Prueba
+- **Módulo 1: Validación de Recursos Multimedia (`validarUrlImagen`):**
+  - Validación de extensiones permitidas (`.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`) y mayúsculas (`.JPG`).
+  - Rechazo de extensiones incompatibles (`.pdf`, `.html`, endpoints sin extensión).
+  - Rechazo de entradas inválidas: cadenas vacías, espacios en blanco, valores `null`, `undefined` y tipos numéricos.
+- **Módulo 2: Lógica de Negocio y Contadores (`actualizarContador`, `registrarInteraccion`):**
+  - Incremento aritmético seguro partiendo de valores numéricos o texto convertible.
+  - Manejo de valores corruptos, negativos o no numéricos retornando valor mínimo seguro.
+  - Aplicación de valores por defecto si se invocan funciones sin argumentos.
+  - Actualización inmutable del objeto de estado para interacciones `+`, `-`, `like`, `dislike` y preservación ante tipos no reconocidos.
+- **Módulo 3: Resiliencia de Red y Consumo de API (`obtenerPerroAleatorio`, `manejarErrorRed`):**
+  - Procesamiento correcto de respuestas exitosas HTTP 200 con formato JSON válido de Dog CEO.
+  - Captura controlada de códigos de error de servidor (HTTP 500, HTTP 404).
+  - Modelado estructurado ante rechazos de promesa (excepciones de conexión o caída de red).
+  - Manejo de respuestas con estructura inesperada o URLs maliciosas.
+  - Rechazo controlado cuando el cliente HTTP no está disponible.
+- **Módulo 4: Manipulación del DOM y Experiencia de Usuario (`rankearPerro`, `nuevoPerro`, `inicializarApp`):**
+  - Inserción de imágenes en las galerías correspondientes y actualización del texto de contadores en el DOM.
+  - Compatibilidad total con argumentos estándar y alias textuales (`like`, `dislike`).
+  - Activación de indicadores de carga (*spinner*) y ocultamiento condicional de la imagen previa.
+  - Visualización del banner de error visual cuando la API externa no responde.
+  - Vinculación reactiva de eventos `click` en botones y evento `load` de imágenes.
+  - Resiliencia y ejecución segura ante árboles del DOM vacíos o elementos inexistentes.
 
-### Diagrama del Flujo de Ramas
+### Umbral Estricto de Cobertura (`coverageThreshold`)
+Configurado en [package.json](./package.json), el pipeline exige un mínimo del **75%** en las cuatro dimensiones fundamentales:
+
+| Dimensión de Cobertura | Umbral Exigido | Porcentaje Real Obtenido | Estado |
+| :--- | :---: | :---: | :---: |
+| **Statements (Sentencias)** | 75% | **97.22%** | ✅ Aprobado |
+| **Branches (Ramas de decisión)** | 75% | **82.14%** | ✅ Aprobado |
+| **Functions (Funciones)** | 75% | **100.00%** | ✅ Aprobado |
+| **Lines (Líneas de código)** | 75% | **98.94%** | ✅ Aprobado |
+
+*Resultado:* **20/20 pruebas aprobadas (100%)**. Si cualquiera de las métricas cae por debajo del 75%, el comando finaliza con código de error, interrumpiendo automáticamente el pipeline.
+
+---
+
+## 🐳 Contenedorización y Orquestación (IE1, IE5)
+
+### Dockerfile Multi-Stage ([Dockerfile](./Dockerfile))
+1. **Stage 1 (`builder` - `node:20-alpine`):**
+   - Valida la integridad sintáctica de `index.js` mediante el motor V8 (`node --check index.js`) antes del empaquetado final.
+2. **Stage 2 (`runtime` - `nginxinc/nginx-unprivileged:alpine`):**
+   - **Base Segura:** Imagen oficial sin privilegios basada en Alpine Linux.
+   - **Parches del Sistema Operativo:** Capa `apk update && apk upgrade --no-cache` que actualiza librerías críticas (`brotli-libs`, `curl`, `libcurl`, `musl`), eliminando vulnerabilidades conocidas.
+   - **Principio de Menor Privilegio (Non-Root):** Ejecución asignada al usuario `nginx` (UID 101). No se ejecutan procesos como superusuario en runtime.
+   - **Puerto No Privilegiado:** Nginx configurado para escuchar en el puerto `8080` (compatible con usuarios non-root sin capabilities especiales de kernel).
+   - **Healthcheck Funcional:**
+     ```dockerfile
+     HEALTHCHECK --interval=30s --timeout=3s --retries=3 --start-period=5s \
+       CMD wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1
+     ```
+     Utiliza la dirección loopback IPv4 (`127.0.0.1:8080`) para evitar fallos de resolución en entornos Alpine con pila dual IPv6/IPv4.
+   - **Tamaño de Imagen:** ~25.9 Megabytes (ultraligera).
+
+### Docker Compose ([docker-compose.yml](./docker-compose.yml))
+Define la infraestructura declarativa de despliegue:
+- **Servicio:** `web-service` con nombre de contenedor estandarizado `dog-app-container`.
+- **Mapeo de Red:** Puerto host `8080` vinculado al puerto de contenedor `8080`.
+- **Red Aislada:** Red bridge dedicada `app-network`.
+- **Política de Reinicio:** `restart: unless-stopped`.
+- **Límites de Recursos:**
+  - `limits.cpus: "0.50"` (máximo 50% de un núcleo de CPU).
+  - `limits.memory: 128M` (techo de memoria RAM de 128 MB).
+  - `reservations.cpus: "0.10"`, `reservations.memory: 64M`.
+- **Sincronización de Salud:** Intervalo de 15s con 3 reintentos para detección ágil de degradación.
+
+---
+
+## 🛡️ Seguridad, Gobernanza y Escalabilidad (IE3)
+
+1. **Principio de Mínimo Privilegio en GitHub Actions:**
+   - Permisos globales del workflow restringidos a solo lectura:
+     ```yaml
+     permissions:
+       contents: read
+     ```
+   - El permiso `packages: write` se concede **exclusivamente al job de publicación** (`build-security-and-publish`), evitando la exposición de privilegios en jobs de pruebas o despliegue.
+2. **Dependabot ([.github/dependabot.yml](./.github/dependabot.yml)):**
+   - Monitoreo semanal (lunes a las 04:00 AM) para tres ecosistemas críticos:
+     - `npm`: Dependencias del proyecto.
+     - `github-actions`: Acciones versionadas del workflow.
+     - `docker`: Imágenes base (`node:20-alpine` y `nginxinc/nginx-unprivileged:alpine`).
+3. **Auditoría de Dependencias (`npm audit`):**
+   - Configurado con nivel `--audit-level=high` para prevenir la introducción de dependencias vulnerables en producción.
+4. **Escaneo de Vulnerabilidades con Trivy:**
+   - La acción `aquasecurity/trivy-action@v0.36.0` inspecciona la imagen construida antes de autorizar su publicación.
+   - Parámetros bloqueantes: `exit-code: '1'`, `severity: 'CRITICAL,HIGH'`, `ignore-unfixed: true`.
+   - **Resultado de la Auditoría:** **0 vulnerabilidades HIGH/CRITICAL** tras la incorporación de los parches en el Dockerfile.
+
+---
+
+## 🔄 Pipeline CI/CD, Despliegue y Trazabilidad (IE4)
+
+El pipeline automatizado en [.github/workflows/ci-cd.yml](./.github/workflows/ci-cd.yml) coordina tres fases consecutivas con Quality Gates bloqueantes:
+
+```mermaid
+flowchart TD
+    Trigger([Push o PR a main / develop]) --> Job1[Job 1: Calidad de Código y Pruebas Unitarias]
+    
+    subgraph Job1_Details ["Fase 1: Calidad (IE2)"]
+        J1A[Checkout Repository] --> J1B[Setup Node.js v20]
+        J1B --> J1C[Verificar Integridad de Archivos]
+        J1C --> J1D[Validar Sintaxis: node --check index.js]
+        J1D --> J1E[npm ci]
+        J1E --> J1F[ESLint: npm run lint]
+        J1F --> J1G[Auditoría: npm audit --audit-level=high]
+        J1G --> J1H[Pruebas Unitarias + Cobertura: npm run test:coverage]
+    end
+    
+    Job1 -->|Exitoso| Job2[Job 2: Build Docker, Trivy y Publicación GHCR]
+    
+    subgraph Job2_Details ["Fase 2: Seguridad y GHCR (IE1, IE3, IE4)"]
+        J2A[Docker Buildx: Construir Imagen + Inyectar COMMIT_SHA] --> J2B[Escaneo Trivy: CRITICAL,HIGH con exit-code 1]
+        J2B --> J2C{¿Evento Push?}
+        J2C -- Sí --> J2D[Publicar en GHCR: sha-commit]
+        J2D --> J2E{¿Rama main?}
+        J2E -- Sí --> J2F[Publicar tag latest]
+        J2E -- No develop --> J2G[Publicar tag develop]
+        J2C -- PR --> J2H[Omitir Publicación]
+    end
+    
+    Job2 -->|Exitoso| Job3[Job 3: Despliegue en Entorno Simulado y Smoke Test]
+    
+    subgraph Job3_Details ["Fase 3: Despliegue y Smoke Test (IE4, IE5)"]
+        J3A[docker compose up -d --build] --> J3B[Monitoreo de Healthcheck: Bucle de 30 intentos]
+        J3B --> J3C{¿Contenedor healthy?}
+        J3C -- No timeout --> J3_Fail[Fallo Crítico: exit 1 + logs]
+        J3C -- Sí --> J3D[Smoke Test HTTP: curl localhost:8080/]
+        J3D --> J3E{¿HTTP 200 y Contenido Valido?}
+        J3E -- No --> J3_Fail
+        J3E -- Sí --> J3F[Teardown: docker compose down -v]
+    end
+```
+
+### Cadena de Trazabilidad Inmutable
+1. **Commit Git:** Cada cambio genera un hash criptográfico único (ej. `3f9a7b2...`).
+2. **Metadatos OCI:** El commit SHA se inyecta como argumento de build (`ARG COMMIT_SHA`) y queda plasmado en la etiqueta `org.opencontainers.image.revision` de la imagen.
+3. **Publicación en GHCR:** La imagen se etiqueta unívocamente como `ghcr.io/shiroasd/evaluacion-devops-002d:<full-sha>`.
+4. **Política de Tags:**
+   - La etiqueta `:latest` se reserva **exclusivamente para despliegues originados en la rama `main`**.
+   - Los pushes a `develop` generan la etiqueta `:develop` y el hash SHA correspondiente, evitando colisiones accidentales con el artefacto de producción.
+5. **Smoke Test con Verificación de Contenido:**
+   - El script no solo verifica que el código de respuesta HTTP sea `200 OK`, sino que analiza el cuerpo de la respuesta mediante `grep` para certificar la presencia del texto esperado (`¿Te gusta este perro?`), asegurando que no se esté sirviendo una página de error o un recurso por defecto.
+
+---
+
+## 🌳 Estrategia de Ramificación (GitFlow)
+
+El equipo aplica **GitFlow** para desacoplar el ciclo de desarrollo de las versiones productivas:
+
+- `main`: Rama de producción. Solo recibe código validado mediante Pull Request aprobado.
+- `develop`: Rama de integración continua (Staging). Consolida features antes de liberar versiones.
+- `feature/*`: Ramas de características individuales que nacen de `develop` y retornan a `develop` mediante Pull Request.
+- `hotfix/*`: Parches urgentes ante incidentes de producción que nacen de `main` y se fusionan a `main` y `develop`.
 
 ```mermaid
 gitGraph
     commit id: "Inicial (main)"
     branch develop
     checkout develop
-    commit id: "Configura entorno develop"
-    branch feature/estilos-tarjeta-perro
-    checkout feature/estilos-tarjeta-perro
-    commit id: "style: diseno de tarjeta"
-    checkout develop
-    merge feature/estilos-tarjeta-perro id: "PR #1 a develop"
+    commit id: "Configuracion develop"
     branch feature/docker-setup
     checkout feature/docker-setup
-    commit id: "feat: dockerfile non-root"
+    commit id: "feat(docker): dockerfile multi-stage"
     checkout develop
-    merge feature/docker-setup id: "PR #2 a develop"
+    merge feature/docker-setup id: "PR #1 a develop"
     branch feature/automated-tests
     checkout feature/automated-tests
-    commit id: "test: jest y cobertura"
+    commit id: "test(jest): 20 tests unitarios y cobertura"
     checkout develop
-    merge feature/automated-tests id: "PR #3 a develop"
+    merge feature/automated-tests id: "PR #2 a develop"
     branch feature/docker-compose
     checkout feature/docker-compose
-    commit id: "feat: compose limites cpu-mem"
+    commit id: "feat(compose): orquestacion con limites de recursos"
     checkout develop
-    merge feature/docker-compose id: "PR #4 a develop"
+    merge feature/docker-compose id: "PR #3 a develop"
     branch feature/security-cicd
     checkout feature/security-cicd
-    commit id: "ci: pipeline ghcr trivy smoke-test"
+    commit id: "ci(pipeline): pipeline ghcr trivy y smoke test"
     checkout develop
-    merge feature/security-cicd id: "PR #5 a develop"
+    merge feature/security-cicd id: "PR #4 a develop"
     checkout main
-    merge develop id: "Release 2.0.0 a main"
+    merge develop id: "Release v2.0.0 a main"
 ```
 
 ---
 
-## 📝 Convenciones de commits (Conventional Commits v1.0.0)
+## 📊 Matriz de Cumplimiento de Indicadores de Evaluación
 
-El equipo aplica rigurosamente la especificación **Conventional Commits (v1.0.0)** para garantizar un historial legible, semántico y apto para pipelines automatizados.
-
-### Formato Obligatorio
-```text
-<tipo>(<alcance opcional>): <descripción concisa en imperativo y minúsculas>
-```
-
-### Tipos Permitidos y Ejemplos en el Proyecto
-
-| Tipo | Propósito | Ejemplos en el Proyecto |
-| :--- | :--- | :--- |
-| `feat` | Incorporación de una nueva funcionalidad visible o lógica. | `feat(docker): agrega dockerfile multi-stage y usuario non-root`<br>`feat(compose): define servicio con limites de cpu y memoria` |
-| `fix` | Corrección de un fallo o error de lógica. | `fix(api): implementa bloque try-catch y banner de error de red`<br>`fix(docker): corrige mapeo de puertos en unprivileged port` |
-| `test` | Implementación o ajuste de pruebas unitarias o de integración. | `test(unit): agrega pruebas jest para validacion de urls y contadores`<br>`test(coverage): valida umbral minimo del 75% en index.js` |
-| `ci` | Cambios en workflows de GitHub Actions o automatizaciones de pipeline. | `ci(pipeline): integra escaneo trivy con bloqueo obligatorio y ghcr`<br>`ci(workflow): agrega prueba de humo con curl en runner simulado` |
-| `style` | Modificaciones visuales, maquetación CSS o diseño (sin alterar lógica). | `style(badges): agrega badges redondeados para contadores de votos`<br>`style(card): optimiza sombras y transiciones en foto principal` |
-| `docs` | Actualización o ampliación de documentación técnica. | `docs: documenta arquitectura de contenedores, trivy y trazabilidad` |
-| `chore` | Mantenimiento rutinario de dependencias y configuraciones. | `chore(deps): actualiza dependencias y configura dependabot semanal` |
-
----
-
-## 🔀 Convenciones de naming de ramas
-
-1. **Ramas Protegidas:**
-   - `main`: Código en producción, 100% estable, probado y auditado.
-   - `develop`: Base de integración para features antes de un release.
-2. **Ramas de Características (`feature/<nombre-kebab-case>`):**
-   - Nacen de `develop` y se reintegran a `develop` vía PR.
-   - Ejemplos: `feature/docker-setup`, `feature/automated-tests`, `feature/docker-compose`, `feature/security-cicd`.
-3. **Ramas de Parche Urgente (`hotfix/<nombre-kebab-case>`):**
-   - Nacen de `main` y se reintegran a `main` y `develop`.
-   - Ejemplo: `hotfix/manejo-error-api`.
-
----
-
-## 🔍 Estrategia de revisión (Pull Requests)
-
-Para garantizar la estabilidad y calidad del software, **está estrictamente prohibido el push directo a `develop` y `main`**. Las integraciones se realizan mediante Pull Request cumpliendo con:
-
-1. **Revisión de Pares Obligatoria (Peer Review):** Todo PR requiere aprobación del revisor técnico antes de autorizar la fusión (*Merge*).
-2. **Quality Gates en CI en Verde:**
-   - Validación léxica y de sintaxis con `node --check`.
-   - Linter estático sin advertencias críticas con ESLint (`no-undef`).
-   - Auditoría de seguridad de dependencias (`npm audit --audit-level=high`).
-   - 100% de pruebas unitarias Jest aprobadas cumpliendo el umbral de cobertura (`coverageThreshold` >= 75%).
-   - Escaneo de contenedor con Trivy sin vulnerabilidades críticas ni altas (`exit-code: 1`).
-   - Prueba de humo (Smoke Test) exitosa con HTTP 200 en el runner.
-3. **Higiene del Repositorio:** Una vez fusionado el PR, la rama de trabajo secundaria se elimina en GitHub para evitar acumulación de ramas huérfanas.
-
----
-
-## 🐳 Arquitectura de Contenedores y Orquestación (IE1, IE5)
-
-### Dockerfile Multi-Stage y Principio de Menor Privilegio
-El empaquetado de la aplicación se definió en [Dockerfile](file:///Dockerfile) bajo una arquitectura **multi-stage**:
-- **Stage 1 (Builder - `node:20-alpine`):** Ejecuta la validación sintáctica de JavaScript mediante el motor V8 (`node --check index.js`) antes del empaquetado final, impidiendo que código corrupto pase a la imagen de distribución.
-- **Stage 2 (Producción - `nginx:alpine`):** Imagen base ultraligera basada en Alpine Linux (~23 MB).
-- **Usuario Sin Privilegios (Non-Root):** Se configura explícitamente `USER nginx` (UID 101). Nginx se reconfigura para escuchar en el puerto no privilegiado `8080`, redirigiendo el archivo PID a `/tmp/nginx.pid` y asignando propiedad de los directorios de trabajo a `nginx:nginx`. Esto previene ataques de escalamiento de privilegios y garantiza el cumplimiento de las guías CIS Docker Benchmark.
-- **Healthcheck Nativo:** Se incluye la directiva `HEALTHCHECK` que ejecuta periódicamente `wget -q -O /dev/null http://localhost:8080/ || exit 1` para reportar el estado de salud al daemon de Docker.
-- **Contexto Optimizado (`.dockerignore`):** Excluye `.git`, `.github`, `node_modules`, `tests`, `coverage` y archivos temporales, reduciendo drásticamente el tamaño del contexto de build.
-
-### Orquestación con Docker Compose
-En [docker-compose.yml](file:///docker-compose.yml) se define la orquestación del servicio con parámetros de seguridad y alta disponibilidad:
-- **Mapeo de Puertos:** Redirecciona `8080:8080` hacia el puerto unprivileged del contenedor.
-- **Aislamiento de Red:** Red dedicada tipo bridge (`app-network`).
-- **Política de Reinicio:** `restart: unless-stopped`.
-- **Límites Estrictos de Recursos:**
-  - `limits.cpus: "0.50"` (máximo 50% de 1 CPU).
-  - `limits.memory: 128M` (límite duro de 128 Megabytes de RAM).
-  - `reservations.cpus: "0.10"`, `reservations.memory: 64M`.
-  Esto evita ataques de denegación de servicio (DoS) por agotamiento de recursos del host.
-- **Healthcheck Sincronizado:** Permite al orquestador evaluar la disponibilidad del servicio con intervalos de 15 segundos y reintentos automáticos.
-
----
-
-## 🧪 Pruebas Automatizadas y Quality Gates (IE2)
-
-El proyecto cuenta con una batería de pruebas automatizadas ejecutadas mediante **Jest** y el entorno simulado de DOM **jest-environment-jsdom**:
-
-1. **Validación Léxica:** `node --check index.js` previene errores sintácticos antes de cualquier fase.
-2. **Análisis Estático (Linting):** ESLint analiza la coherencia del código en navegadores y Node.js, bloqueando variables no definidas (`no-undef`).
-3. **Pruebas Unitarias ([tests/app.test.js](file:///tests/app.test.js)):**
-   - **Módulo 1:** Validación de URLs e imágenes permitidas (expresiones regulares, protocolos HTTP/S, extensiones válidas vs. no soportadas o nulas).
-   - **Módulo 2:** Lógica matemática de incremento y actualización de estado inmutable para contadores de interacción.
-   - **Módulo 3:** Captura y modelado de errores de red (respuestas HTTP 500, excepciones de red simuladas con mocks de `fetch`, formato inválido).
-   - **Módulo 4:** Manipulación interactiva del DOM (inserción de imágenes en contenedores de like/dislike, actualización de badges numéricos, activación/desactivación de loaders y manejo de errores visuales).
-4. **Umbral de Cobertura Obligatorio (`coverageThreshold`):**
-   Configurado en [package.json](file:///package.json):
-   ```json
-   "coverageThreshold": {
-     "global": {
-       "branches": 75,
-       "functions": 75,
-       "lines": 75,
-       "statements": 75
-     }
-   }
-   ```
-   Si la cobertura de ramas, funciones, líneas o sentencias cae por debajo del 75%, Jest finaliza con código de salida 1, **bloqueando automáticamente el pipeline de CI/CD**.
-
----
-
-## 🛡️ Parámetros de Seguridad y Escalabilidad (IE3)
-
-1. **Principio de Menor Privilegio en CI/CD:**
-   El workflow de GitHub Actions restringe explícitamente los permisos otorgados al token automático `GITHUB_TOKEN`:
-   ```yaml
-   permissions:
-     contents: read
-     packages: write
-   ```
-   Se bloquea cualquier acceso innecesario a issues, pull requests o administración del repositorio.
-2. **Gestión Automatizada de Vulnerabilidades con Dependabot ([.github/dependabot.yml](file:///.github/dependabot.yml)):**
-   - Escaneo periódico semanal (lunes a las 04:00 AM) para dependencias de **npm**.
-   - Escaneo periódico semanal para acciones de **github-actions**.
-   - Asignación automática de etiquetas `dependencies` y `security`.
-   - Generación de Pull Requests automáticos con prefijos convencionales (`chore(deps)` y `ci(deps)`).
-3. **Auditoría de Vulnerabilidades en Dependencias:**
-   Ejecución de `npm audit --audit-level=high` durante la fase de CI, bloqueando el avance si se identifican vulnerabilidades conocidas en las bibliotecas de Node.js.
-4. **Escaneo Estricto de Seguridad en Contenedores con Trivy:**
-   Integración de la acción oficial `aquasecurity/trivy-action`:
-   ```yaml
-   - name: Escaneo Estricto de Seguridad con Trivy (Bloqueo Obligatorio)
-     uses: aquasecurity/trivy-action@master
-     with:
-       image-ref: ${{ steps.image-tag.outputs.image }}:${{ github.sha }}
-       format: 'table'
-       exit-code: '1'
-       ignore-unfixed: true
-       vuln-type: 'os,library'
-       severity: 'CRITICAL,HIGH'
-   ```
-   **Criterio de Bloqueo Exigido:** Si Trivy detecta una vulnerabilidad con severidad `CRITICAL` o `HIGH` en el sistema operativo base o librerías empaquetadas, el comando retorna `exit-code: 1`. Esto interrumpe de inmediato el pipeline, impidiendo la publicación de la imagen en el registro y cancelando el despliegue.
-
----
-
-## 🚀 Despliegue, Trazabilidad y Smoke Tests (IE4)
-
-### Pipeline Integral CI/CD ([.github/workflows/ci-cd.yml](file:///.github/workflows/ci-cd.yml))
-
-```mermaid
-flowchart TD
-    A[Push o PR a develop / main] --> B[Fase 1: Calidad y Tests]
-    subgraph FASE 1: Calidad y Tests
-        B --> B1[Verificar Integridad de Archivos]
-        B1 --> B2[Validar Sintaxis: node --check]
-        B2 --> B3[Linting: ESLint]
-        B3 --> B4[Auditoría: npm audit --audit-level=high]
-        B4 --> B5[Tests Unitarios + Cobertura: Jest]
-    end
-    B5 --> C[Fase 2: Build y Seguridad Docker]
-    subgraph FASE 2: Build y Seguridad
-        C --> C1[Docker Buildx: Compilar Imagen]
-        C1 --> C2[Escaneo Trivy: Bloqueo exit-code 1 si CRITICAL/HIGH]
-        C2 --> C3{¿Push a main o develop?}
-        C3 -- Sí --> C4[Publicar en GHCR con Commit SHA y Latest]
-        C3 -- PR --> C5[Omitir Push]
-    end
-    C4 --> D[Fase 3: Despliegue Simulado y Smoke Test]
-    subgraph FASE 3: Despliegue y Validacion
-        D --> D1[Desplegar con Docker Compose up -d]
-        D1 --> D2[Esperar Healthcheck: Status healthy]
-        D2 --> D3[Smoke Test con curl: Validar HTTP 200]
-        D3 --> D4[Teardown: Docker Compose down]
-    end
-```
-
-### Trazabilidad Inmutable con GHCR y Commit SHA
-- La imagen construida se etiqueta y publica en **GitHub Container Registry (`ghcr.io`)** utilizando el hash criptográfico del commit:
-  `ghcr.io/<organizacion-o-usuario>/<repositorio>:${{ github.sha }}`
-- Esto garantiza **inmutabilidad de artefactos**, reproducibilidad exacta de cualquier versión desplegada y auditoría completa de extremo a extremo (desde el código fuente en Git hasta el contenedor en ejecución).
-
-### Despliegue en Entorno Simulado y Smoke Test
-Antes de certificar una entrega, el pipeline ejecuta un despliegue automático simulado en el runner de GitHub Actions:
-1. Levanta el contenedor en segundo plano con `docker compose up -d --build`.
-2. Monitorea activamente el `healthcheck` del contenedor en un bucle de sondeo hasta confirmar el estado `healthy`.
-3. Ejecuta una **Prueba de Humo (Smoke Test)** enviando una petición HTTP real mediante `curl`:
-   ```bash
-   HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/)
-   ```
-4. Valida que el código de respuesta sea estrictamente **HTTP 200 OK**. Si el servicio responde con cualquier código distinto o no está disponible, el pipeline falla de forma controlada y expone los logs del contenedor para facilitar el diagnóstico.
-5. Ejecuta la limpieza de infraestructura (*teardown*) mediante `docker compose down -v`.
-
----
-
-## 📁 Estructura del proyecto
-
-```text
-evaluacion-devops-002D/
-├── .github/
-│   ├── dependabot.yml          # Escaneo periódico semanal (npm y github-actions)
-│   └── workflows/
-│       └── ci-cd.yml           # Pipeline completo de CI/CD (Quality Gates, Trivy, GHCR, Smoke Test)
-├── tests/
-│   └── app.test.js             # Suite de pruebas unitarias Jest con entorno JSDOM
-├── .dockerignore               # Filtros de exclusión para contexto de build en Docker
-├── .gitignore                  # Reglas de exclusión para el control de versiones en Git
-├── Dockerfile                  # Multi-stage build con Nginx Alpine, usuario non-root y healthcheck
-├── docker-compose.yml          # Orquestación con límites de CPU/RAM, red bridge y healthcheck
-├── index.html                  # Estructura semántica, panel de contadores y contenedor de error
-├── index.js                    # Lógica modular para consumo de API, contadores y eventos del DOM
-├── package.json                # Configuración de dependencias, scripts de test/lint y coverageThreshold
-├── package-lock.json           # Árbol reproducible de dependencias fijadas
-├── style.css                   # Reglas visuales, estilos de tarjetas, badges y loaders
-└── README.md                   # Documentación integral de ingeniería y gobernanza DevOps
-```
+| Indicador | Puntos | Estado | Evidencia Técnica Comprobable |
+| :--- | :---: | :---: | :--- |
+| **IE1. Uso de contenedores** | 20 / 20 | **CUMPLIDO** | [Dockerfile](./Dockerfile) multi-stage (`node:20-alpine` + `nginxinc/nginx-unprivileged:alpine`). Imagen de 25.9 MB, usuario `nginx` (UID 101), puerto no privilegiado 8080, directiva `HEALTHCHECK` con loopback IPv4 (`127.0.0.1:8080`) y parches de seguridad de SO aplicados. |
+| **IE2. Pruebas automatizadas en pipelines CI** | 20 / 20 | **CUMPLIDO** | Suite de 20 pruebas en [tests/app.test.js](./tests/app.test.js) con Jest y JSDOM. Cobertura real: **97.22% Statements**, **82.14% Branches**, **100% Functions**, **98.94% Lines** (umbral exigido >= 75%). Scripts `npm test`, `npm run test:coverage` y `npm run lint`. Quality Gate bloqueante en CI. |
+| **IE3. Parámetros de escalabilidad y seguridad** | 20 / 20 | **CUMPLIDO** | Principio de menor privilegio en GitHub Actions (`contents: read` global, `packages: write` aislado al job de publicación). [.github/dependabot.yml](./.github/dependabot.yml) con escaneo semanal para npm, github-actions y docker. `npm audit --audit-level=high`. Escaneo Trivy sin vulnerabilidades HIGH/CRITICAL. Límites en Docker Compose: CPU 0.50, RAM 128 MB. |
+| **IE4. Despliegue automático y trazabilidad** | 20 / 20 | **CUMPLIDO** | Pipeline en [.github/workflows/ci-cd.yml](./.github/workflows/ci-cd.yml). Publicación automatizada en GHCR etiquetada con commit SHA completo y metadatos OCI (`ARG COMMIT_SHA`). Tag `latest` reservado solo para `main`. Despliegue simulado con Docker Compose. Smoke Test con validación de código HTTP 200 y verificación de contenido HTML legítimo. Teardown automático. |
+| **IE5. Orquestación de contenedores** | 20 / 20 | **CUMPLIDO** | [docker-compose.yml](./docker-compose.yml) con sintaxis validada (`docker compose config`). Servicio `web-service`, contenedor `dog-app-container`, red bridge dedicada `app-network`, política `restart: unless-stopped`, healthcheck funcional de 15s y límites estrictos de CPU y memoria. Validación comprobada localmente con `up -d`, `ps`, `logs` y `down`. |
 
 ---
 
@@ -316,7 +360,7 @@ evaluacion-devops-002D/
 ---
 
 ### Reflexión Individual - Gaspar Toro
-El desarrollo de esta fase consolidó la importancia del enfoque *Shift-Left Security* y la automatización rigurosa dentro del ciclo de vida del software. Implementar un contenedor con usuario sin privilegios (`non-root`) y someterlo a un escaneo estricto con Trivy con código de salida bloqueante evidenció cómo las políticas de seguridad dejan de ser un paso manual al final del desarrollo para convertirse en puertas de calidad (*Quality Gates*) automáticas. La trazabilidad lograda mediante el etiquetado por commit SHA en GHCR y el despliegue simulado con smoke test garantizan que cada artefacto liberado sea inmutable, seguro y completamente reproducible.
+El desarrollo y corrección de esta fase consolidó la importancia del enfoque *Shift-Left Security* y la automatización rigurosa dentro del ciclo de vida del software. Implementar un contenedor con usuario sin privilegios (`non-root`) y someterlo a un escaneo estricto con Trivy con código de salida bloqueante evidenció cómo las políticas de seguridad dejan de ser un paso manual al final del desarrollo para convertirse en puertas de calidad (*Quality Gates*) automáticas. La trazabilidad lograda mediante el etiquetado por commit SHA en GHCR y el despliegue simulado con smoke test garantizan que cada artefacto liberado sea inmutable, seguro y completamente reproducible.
 
 ---
 

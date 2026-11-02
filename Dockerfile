@@ -16,9 +16,20 @@ RUN node --check index.js
 # ==============================================================================
 FROM nginxinc/nginx-unprivileged:alpine
 
-# Limpieza de archivos estáticos por defecto y copia de los activos validados
+# Argumento de build para inyectar trazabilidad del commit SHA
+ARG COMMIT_SHA=unknown
+
+# Metadatos OCI para trazabilidad de la imagen
+LABEL org.opencontainers.image.title="Lista de perros" \
+      org.opencontainers.image.description="Aplicación web interactiva para clasificar perritos - Evaluación DevOps" \
+      org.opencontainers.image.source="https://github.com/Shiroasd/evaluacion-devops-002D" \
+      org.opencontainers.image.revision="${COMMIT_SHA}" \
+      org.opencontainers.image.vendor="Shiroasd"
+
+# Actualización de parches de seguridad del SO Alpine y preparación de directorios
 USER root
-RUN rm -rf /usr/share/nginx/html/* && \
+RUN apk update && apk upgrade --no-cache && \
+    rm -rf /usr/share/nginx/html/* && \
     chown -R nginx:nginx /usr/share/nginx/html
 USER nginx
 
@@ -33,7 +44,7 @@ EXPOSE 8080
 
 # Healthcheck nativo para validar disponibilidad del servicio
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 --start-period=5s \
-  CMD wget -q -O /dev/null http://localhost:8080/ || exit 1
+  CMD wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1
 
 # Ejecución de Nginx en primer plano
 CMD ["nginx", "-g", "daemon off;"]

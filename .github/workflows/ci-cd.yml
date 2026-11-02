@@ -10,10 +10,9 @@ on:
       - main
       - develop
 
-# Permisos mínimos asignados al GITHUB_TOKEN (Principio de Menor Privilegio)
+# Permisos mínimos globales por defecto (Principio de Menor Privilegio)
 permissions:
   contents: read
-  packages: write
 
 env:
   REGISTRY: ghcr.io
@@ -26,6 +25,8 @@ jobs:
   code-quality-and-tests:
     name: Calidad de Código, Linting y Pruebas Unitarias
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Clonar repositorio (Checkout)
@@ -69,7 +70,7 @@ jobs:
       - name: Ejecutar Pruebas Unitarias con Umbral de Cobertura Estricto (Jest)
         run: |
           echo "Ejecutando suite de pruebas unitarias Jest con validación de coverageThreshold..."
-          npm test
+          npm run test:coverage
 
   # ============================================================================
   # FASE 2: Contenedores, Escaneo Trivy y Publicación GHCR (IE1, IE3, IE4)
@@ -100,6 +101,7 @@ jobs:
           echo "Imagen normalizada: ${IMAGE}"
 
       - name: Autenticación en GitHub Container Registry (GHCR)
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -112,6 +114,8 @@ jobs:
           context: .
           file: ./Dockerfile
           load: true
+          build-args: |
+            COMMIT_SHA=${{ github.sha }}
           tags: |
             ${{ steps.image-tag.outputs.image }}:${{ github.sha }}
             ${{ steps.image-tag.outputs.image }}:latest
@@ -126,12 +130,19 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-      - name: Publicar Imagen en GHCR (Trazabilidad por SHA y Latest)
+      - name: Publicar Imagen en GHCR (Trazabilidad por SHA y Latest solo en main)
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         run: |
-          echo "Publicando imagen en GHCR con SHA ${{ github.sha }}..."
+          echo "Publicando imagen en GHCR con SHA completo ${{ github.sha }}..."
           docker push ${{ steps.image-tag.outputs.image }}:${{ github.sha }}
-          docker push ${{ steps.image-tag.outputs.image }}:latest
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "Rama principal main detectada: publicando etiqueta latest..."
+            docker push ${{ steps.image-tag.outputs.image }}:latest
+          else
+            echo "Rama develop detectada: publicando etiqueta develop (latest reservado exclusivamente para main)..."
+            docker tag ${{ steps.image-tag.outputs.image }}:${{ github.sha }} ${{ steps.image-tag.outputs.image }}:develop
+            docker push ${{ steps.image-tag.outputs.image }}:develop
+          fi
 
   # ============================================================================
   # FASE 3: Despliegue en Entorno Simulado y Smoke Test (IE4, IE5)
@@ -140,6 +151,8 @@ jobs:
     name: Despliegue en Entorno Simulado y Smoke Test
     needs: build-security-and-publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Clonar repositorio (Checkout)
@@ -153,27 +166,40 @@ jobs:
       - name: Validar Estado de Salud del Contenedor (Healthcheck)
         run: |
           echo "Monitoreando healthcheck del contenedor dog-app-container..."
+          HEALTHY=0
           for i in {1..30}; do
             STATUS=$(docker inspect --format='{{json .State.Health.Status}}' dog-app-container 2>/dev/null || echo '"starting"')
             echo "Intento $i/30: Estado del contenedor = $STATUS"
             if [ "$STATUS" = '"healthy"' ]; then
               echo "Contenedor saludable (healthy) verificado exitosamente."
+              HEALTHY=1
               break
             fi
             sleep 2
           done
+          if [ "$HEALTHY" -ne 1 ]; then
+            echo "Error crítico: El contenedor nunca alcanzó el estado 'healthy' dentro del umbral de tiempo."
+            docker compose logs
+            exit 1
+          fi
 
-      - name: Ejecutar Prueba de Humo (Smoke Test HTTP 200)
+      - name: Ejecutar Prueba de Humo (Smoke Test HTTP 200 y Verificación de Contenido)
         run: |
           echo "Ejecutando Smoke Test contra http://localhost:8080..."
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/)
+          HTTP_STATUS=$(curl -s -o /tmp/smoke_response.html -w "%{http_code}" http://localhost:8080/)
           echo "Respuesta HTTP recibida: $HTTP_STATUS"
           if [ "$HTTP_STATUS" -ne 200 ]; then
             echo "Error crítico: El servicio respondió con HTTP $HTTP_STATUS en lugar de 200 OK."
             docker compose logs
             exit 1
           fi
-          echo "Smoke Test Exitoso: Aplicación web operativa y sirviendo tráfico HTTP 200 OK."
+          echo "Validando que el contenido esencial esté presente en el HTML..."
+          if ! grep -q "¿Te gusta este perro?" /tmp/smoke_response.html; then
+            echo "Error crítico: La respuesta no contiene el HTML esperado de la aplicación."
+            cat /tmp/smoke_response.html
+            exit 1
+          fi
+          echo "Smoke Test Exitoso: Aplicación web operativa, respondiendo HTTP 200 OK y sirviendo el contenido legítimo."
 
       - name: Limpieza de Recursos (Teardown)
         if: always()
