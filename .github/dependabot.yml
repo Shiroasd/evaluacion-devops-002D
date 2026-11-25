@@ -31,3 +31,19 @@ updates:
       - "dependencies"
       - "security"
     open-pull-requests-limit: 10
+
+  # Escaneo y actualización periódica para imágenes base en Dockerfile
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "America/Santiago"
+    commit-message:
+      prefix: "docker(deps)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "security"
+    open-pull-requests-limit: 10
