@@ -180,3 +180,34 @@ jobs:
         run: |
           echo "Deteniendo y eliminando contenedores y redes simuladas..."
           docker compose down -v
+
+  # ============================================================================
+  # FASE 4: Despliegue Continuo en Amazon EKS con Istio Service Mesh
+  # ============================================================================
+  deploy-eks:
+    name: Despliegue Continuo en Amazon EKS (Istio)
+    needs: simulated-deployment
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ENABLE_EKS_DEPLOY == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Configurar Credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Configurar Kubeconfig para Cluster EKS
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name cluster-istio
+
+      - name: Desplegar Manifiestos en Namespace Istio
+        run: |
+          kubectl apply -f k8s/ -n microservices-demo
+          kubectl rollout status deployment/dog-rating-app -n microservices-demo --timeout=180s
+          kubectl get pods,svc -n microservices-demo -l app=dog-rating-app

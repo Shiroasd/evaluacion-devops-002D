@@ -284,6 +284,60 @@ Antes de certificar una entrega, el pipeline ejecuta un despliegue automático s
 
 ---
 
+## ☸️ Despliegue en Amazon EKS y Service Mesh (Istio + Kiali + Prometheus)
+
+La aplicación se encuentra preparada para su despliegue productivo en **Amazon EKS** (clúster `cluster-istio`, región `us-east-1`) dentro del namespace `microservices-demo`, el cual cuenta con inyección automática de Service Mesh habilitada (`istio-injection=enabled`).
+
+### Arquitectura de Nodos y Sidecar Proxy (`2/2`)
+
+```mermaid
+flowchart LR
+    Internet((Tráfico Externo)) --> LB["AWS LoadBalancer<br/>Service: dog-rating-app (:80)"]
+    subgraph EKS["Amazon EKS - Namespace: microservices-demo (istio-injection=enabled)"]
+        subgraph Pod1["Pod: dog-rating-app (2/2 Running)"]
+            Envoy1["istio-proxy (Envoy)<br/>mTLS + Telemetría L7"] <-->|"localhost:8080"| App1["Contenedor: http<br/>Nginx Alpine (non-root)"]
+        end
+        subgraph Pod2["Pod: dog-rating-app (2/2 Running)"]
+            Envoy2["istio-proxy (Envoy)<br/>mTLS + Telemetría L7"] <-->|"localhost:8080"| App2["Contenedor: http<br/>Nginx Alpine (non-root)"]
+        end
+    end
+    LB --> Envoy1
+    LB --> Envoy2
+    Envoy1 -.->|"Métricas L7"| Prom["Prometheus"]
+    Envoy2 -.->|"Métricas L7"| Prom
+    Prom --> Kiali["Kiali Service Graph"]
+    Istiod["istiod (Control Plane / CA)"] -.->|"Certificados X.509 & Config"| Envoy1
+    Istiod -.->|"Certificados X.509 & Config"| Envoy2
+```
+
+- **Sidecar Injection (`2/2`):** Al aplicar [k8s/deployment.yaml](file:///k8s/deployment.yaml), el plano de control `istiod` intercepta la creación de los Pods e inyecta el contenedor `istio-proxy` (Envoy) junto al contenedor de aplicación `http`. Por ello, cada réplica saludable muestra estado **`2/2 Running`** (contenedor de aplicación + sidecar proxy), ejecutándose sobre los nodos worker de EKS con recursos acotados para entornos de laboratorio (`requests`: `50m` CPU / `64Mi` RAM; `limits`: `200m` CPU / `128Mi` RAM).
+- **Detección de Protocolo y Topología Istio:** Tanto el contenedor como el puerto del `Deployment` y del `Service` ([k8s/service.yaml](file:///k8s/service.yaml)) utilizan explícitamente `name: http` (puerto `80` hacia `targetPort: 8080`), permitiendo que Envoy identifique tráfico **HTTP (L7)** automáticamente en lugar de tratarlo como TCP opaco. Las etiquetas estándar `app: dog-rating-app` y `version: v1` habilitan el agrupamiento por servicio y versión en Istio y Kiali.
+- **Sondas de Salud (`Probes`):** El `Deployment` configura `readinessProbe` y `livenessProbe` vía HTTP GET en `/` sobre el puerto `8080` para evitar enrutar tráfico hacia Pods no preparados y reiniciar instancias bloqueadas.
+- **Entrega Continua a EKS (`deploy-eks`):** En [.github/workflows/ci-cd.yml](file:///.github/workflows/ci-cd.yml), el job `deploy-eks` se ejecuta únicamente en `push` a `main` cuando la variable de repositorio `vars.ENABLE_EKS_DEPLOY == 'true'`. Autentica mediante `aws-actions/configure-aws-credentials@v4` (con soporte opcional para `AWS_SESSION_TOKEN` de laboratorio), configura `kubectl` con `aws eks update-kubeconfig --region us-east-1 --name cluster-istio` y aplica los manifiestos con `kubectl apply -f k8s/ -n microservices-demo`.
+
+### Observabilidad de Tráfico, Latencia y Errores en Kiali y Prometheus
+
+Cada sidecar `istio-proxy` intercepta las peticiones entrantes y salientes mediante reglas de red del Pod y exporta métricas L7 estandarizadas (`istio_requests_total`, histogramas `istio_request_duration_milliseconds_bucket`, bytes transferidos) que **Prometheus** recolecta periódicamente:
+
+- **Tráfico (Throughput / RPS):** Kiali visualiza en tiempo real el flujo de solicitudes por segundo entre el `Service` `dog-rating-app` y los workloads `v1`, facilitando la detección de picos de demanda o tráfico desbalanceado entre réplicas.
+- **Latencia (Percentiles p50, p95, p99):** A partir de los histogramas de Prometheus, Kiali calcula la distribución de tiempos de respuesta para identificar degradaciones en colas largas (p95/p99) antes de que impacten al total de usuarios.
+- **Tasa de Errores (`4xx` / `5xx`):** Las aristas del grafo de Kiali cambian de color (verde, ámbar o rojo) según el porcentaje de códigos HTTP exitosos frente a respuestas `4xx`/`5xx` o fallos de conexión TCP/TLS.
+
+### Seguridad mTLS (Mutual TLS) en la Malla
+
+- **Identidad y Cifrado Transparente:** El plano de control `istiod` actúa como Autoridad Certificadora (CA), rotando automáticamente certificados X.509 basados en identidad SPIFFE para cada Pod del namespace `microservices-demo`.
+- **Tráfico East-West Autenticado:** Los proxies Envoy establecen sesiones **mTLS** entre workloads de la malla sin necesidad de configurar TLS dentro de Nginx ni gestionar secretos manuales en la aplicación. En Kiali, la insignia de candado en las conexiones del grafo confirma que el tráfico viaja cifrado y mutuamente autenticado.
+
+### Decisiones Técnicas Basadas en Métricas (Escalamiento y Rollback)
+
+| Señal Observada en Prometheus / Kiali | Diagnóstico Operativo | Acción Técnica Recomendada |
+| :--- | :--- | :--- |
+| Incremento sostenido de **RPS** junto con alza en latencia **p95/p99** y consumo cercano a `200m` CPU / `128Mi` RAM | Saturación de capacidad de las 2 réplicas actuales | **Escalamiento horizontal:** incrementar réplicas (`kubectl scale deployment/dog-rating-app --replicas=4 -n microservices-demo`) o configurar un `HorizontalPodAutoscaler` (HPA) basado en CPU/RPS |
+| Aumento abrupto de errores **HTTP `5xx`**, aristas en rojo en Kiali o fallos repetidos en `readinessProbe` tras un despliegue | Regresión funcional, imagen defectuosa o incompatibilidad de configuración | **Rollback inmediato:** revertir a la revisión estable anterior mediante `kubectl rollout undo deployment/dog-rating-app -n microservices-demo` o desviar el tráfico al subset estable usando `VirtualService` |
+| Degradación intermitente en latencia hacia dependencias externas sin saturación de CPU | Timeouts de red o fallos en API externa (`dog.ceo`) | Ajustar políticas de `timeout` y `retries` en un `VirtualService` de Istio o activar `DestinationRule` con *circuit breaking* (*outlier detection*) |
+
+---
+
 ## 📁 Estructura del proyecto
 
 ```text
@@ -291,7 +345,10 @@ evaluacion-devops-002D/
 ├── .github/
 │   ├── dependabot.yml          # Escaneo periódico semanal (npm y github-actions)
 │   └── workflows/
-│       └── ci-cd.yml           # Pipeline completo de CI/CD (Quality Gates, Trivy, GHCR, Smoke Test)
+│       └── ci-cd.yml           # Pipeline completo de CI/CD (Quality Gates, Trivy, GHCR, Smoke Test, EKS)
+├── k8s/
+│   ├── deployment.yaml         # Deployment dog-rating-app (2 réplicas, probes, recursos e Istio labels)
+│   └── service.yaml            # Service LoadBalancer dog-rating-app (puerto 80 -> 8080, name: http)
 ├── tests/
 │   └── app.test.js             # Suite de pruebas unitarias Jest con entorno JSDOM
 ├── .dockerignore               # Filtros de exclusión para contexto de build en Docker
