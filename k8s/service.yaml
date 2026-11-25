@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dog-rating-app
+  namespace: microservices-demo
+  labels:
+    app: dog-rating-app
+spec:
+  type: LoadBalancer
+  selector:
+    app: dog-rating-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
