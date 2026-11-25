@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio (Checkout)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configurar Node.js (v20)
         uses: actions/setup-node@v4
@@ -85,7 +85,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio (Checkout)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configurar Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -156,7 +156,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio (Checkout)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Desplegar Servicio con Docker Compose
         run: |
@@ -218,7 +218,7 @@ jobs:
 
     steps:
       - name: Clonar repositorio (Checkout)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configurar Credenciales de AWS
         uses: aws-actions/configure-aws-credentials@v4
